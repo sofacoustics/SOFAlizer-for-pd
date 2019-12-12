@@ -173,24 +173,31 @@ static void SOFAlizer_dsp(t_SOFAlizer *x, t_signal **sp)
 
 static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
 {
-    /*********************
+    /*********************/
     int filter_length;
     int err;
     struct MYSOFA_EASY *hrtf = NULL;
+    int i, j;
+    int M;
+    int N;
     
-        hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
-        if(hrtf == NULL)
-            return err;
-
+    
+    hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
+    if(hrtf == NULL)
+    return err;
+            
+    M = hrtf->hrtf->M;
+	N = hrtf->hrtf->N;
+	
 	fprintf(stderr, "mit_kemar_normal_pinna.sofa: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
 							hrtf->hrtf->M, hrtf->hrtf->N,
 							(unsigned int)(hrtf->hrtf->DataSamplingRate.values[0]),
 							mysofa_getAttribute(hrtf->hrtf->attributes, "DatabaseName"),
 							mysofa_getAttribute(hrtf->hrtf->attributes, "Title"),
 							mysofa_getAttribute(hrtf->hrtf->attributes, "ListenerShortName"));
-/*********************/
 
-
+/************************/
+							
     t_SOFAlizer *x = (t_SOFAlizer *)pd_new(SOFAlizer_class);
     x->left_channel = outlet_new(&x->x_obj, gensym("signal"));
     x->right_channel = outlet_new(&x->x_obj, gensym("signal"));
@@ -199,8 +206,19 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
 
     x->azimuth = azimArg ;
     x->elevation = elevArg ;
+    
+/*****************************/
+    t_float SOFAlizer_impulses[M][2][128];
+    
+    for (i = 0; i < M/2; i++) {
+	    for (j = 0 ; j < 128 ; j++) {
+			SOFAlizer_impulses[2*i][0][j] = hrtf->hrtf->DataIR.values[2*i*N+j];
+			SOFAlizer_impulses[2*i+1][1][j] = hrtf->hrtf->DataIR.values[(2*i+1)*N+j];
+		}
+    }
+/*********************/
 
-
+/**************************************
     int i, j;
     FILE *fp;
     char buff[1024], *bufptr;
@@ -223,6 +241,8 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
         }
         fclose(fp) ;
     }
+/**************************************/
+
     x->impulses = SOFAlizer_impulses;
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
