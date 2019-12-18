@@ -21,6 +21,12 @@
 
 static t_class *SOFAlizer_class;
 
+int filter_length;
+struct MYSOFA_EASY *hrtf = NULL;
+int M;
+int N;
+float values[3];
+
 typedef struct _SOFAlizer
 {
     t_object x_obj; 
@@ -52,11 +58,12 @@ static t_int *SOFAlizer_perform(t_int *w)
     t_float *left_out = (t_float *)(w[4]); 
     int blocksize = (int)(w[5]);
 
-    unsigned ch_L, ch_R, i;
+    //unsigned ch_L, ch_R, 
+    unsigned i;
 
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
-	
+/**********************************************************	
     if (x->ele < -40) 
 		x->ele = -40;
     if (x->ele > 90)
@@ -74,9 +81,9 @@ static t_int *SOFAlizer_perform(t_int *w)
 		ch_R = 0;
 		x->azi = 360.0 - x->azi;
 	}
-	
-    x->ele *= 0.1;   /* divided by 10 since each elevation is 10 degrees apart */
-
+*************************************************************/	
+   // x->ele *= 0.1;   /* divided by 10 since each elevation is 10 degrees apart */
+/****************************************************************************************************************+
     if (x->ele < 8.) // if elevation is less than 80 degrees...
     { 
 		int elevInt = (int)floor(x->ele); // A quantized version of the elevation    
@@ -129,6 +136,16 @@ static t_int *SOFAlizer_perform(t_int *w)
 		}
 
 	}
+***********************************************************************************/
+	float Pi = 3.1415926536;
+	values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
+	values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
+	values[2] = 1.4 * sin(Pi/180 * x->ele);
+	
+
+	int reg = 0;
+	reg = mysofa_lookup(hrtf->lookup, values);
+	reg = floor(reg /2);
 
     float inSample;
 	float convSum[2]; // to accumulate the sum during convolution.
@@ -148,14 +165,14 @@ static t_int *SOFAlizer_perform(t_int *w)
 		for (i = 0; i < 128; i++)
 		{ 
 			convSum[0] += (x->previousImpulse[0][i] * x->crossCoef[blocksizeDelta] + 
-							x->currentImpulse[0][i] * x->crossCoef[scaledBlocksize]) * 
+							x->impulses[reg][0][i] * x->crossCoef[scaledBlocksize]) * 
 							x->convBuffer[(x->bufferPin - i) &127];
 			convSum[1] += (x->previousImpulse[1][i] * x->crossCoef[blocksizeDelta] + 
-							x->currentImpulse[1][i] * x->crossCoef[scaledBlocksize]) * 
+							x->impulses[reg][1][i] * x->crossCoef[scaledBlocksize]) * 
 							x->convBuffer[(x->bufferPin - i) &127];
 
-			x->previousImpulse[0][i] = x->currentImpulse[0][i];
-			x->previousImpulse[1][i] = x->currentImpulse[1][i];
+			x->previousImpulse[0][i] = x->impulses[reg][0][i];
+			x->previousImpulse[1][i] = x->impulses[reg][1][i];
 		}	
 		x->bufferPin = (x->bufferPin + 1) & 127;
   
@@ -174,13 +191,8 @@ static void SOFAlizer_dsp(t_SOFAlizer *x, t_signal **sp)
 static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
 {
     /*********************/
-    int filter_length;
-    int err;
-    struct MYSOFA_EASY *hrtf = NULL;
-    int i, j;
-    int M;
-    int N;
     
+    int i, j, err;; 
     
     hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
     if(hrtf == NULL)
@@ -212,8 +224,8 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
     
     for (i = 0; i < M/2; i++) {
 	    for (j = 0 ; j < 128 ; j++) {
-			SOFAlizer_impulses[2*i][0][j] = hrtf->hrtf->DataIR.values[2*i*N+j];
-			SOFAlizer_impulses[2*i+1][1][j] = hrtf->hrtf->DataIR.values[(2*i+1)*N+j];
+			SOFAlizer_impulses[i][0][j] = hrtf->hrtf->DataIR.values[2*i*N+j];
+			SOFAlizer_impulses[i][1][j] = hrtf->hrtf->DataIR.values[(2*i+1)*N+j];
 		}
     }
 /*********************/
@@ -223,10 +235,7 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
     FILE *fp;
     char buff[1024], *bufptr;
     int filedesc;
-
-
 	filedesc = open_via_path(canvas_getdir(canvas_getcurrent())->s_name, "earplug_data.txt", "", buff, &bufptr, 1024, 0 );
-
     if (filedesc >= 0) // If there was no error opening the text file...
     {	
 		post("[SOFAlizer~] found impulse reponse file, overriding defaults:") ;
@@ -241,9 +250,10 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
         }
         fclose(fp) ;
     }
-/**************************************/
+**************************************/
 
     x->impulses = SOFAlizer_impulses;
+        
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -40 to 90 degrees. azimuth: 360") ;
@@ -266,14 +276,14 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
 	}
 
 	// This is the scaling factor for the azimuth so that it corresponds to an HRTF in the KEMAR database
-    x->azimScale[0] = 0.153846153; x->azimScale[8] = 0.153846153;   /* -40 and 40 degree */
-    x->azimScale[1] = 0.166666666; x->azimScale[7] = 0.166666666;   /* -30 and 30 degree */
-    x->azimScale[2] = 0.2; x->azimScale[3]=0.2; x->azimScale[4]=0.2; x->azimScale[5]=0.2; x->azimScale[6]=0.2;  /* -20 to 20 degree */
-    x->azimScale[9] = 0.125;  		/* 50 degree */
-    x->azimScale[10] = 0.1;		/* 60 degree */
-    x->azimScale[11] = 0.066666666;      /* 70 degree */
-    x->azimScale[12] = 0.033333333;	/* 80 degree */
-
+    //x->azimScale[0] = 0.153846153; x->azimScale[8] = 0.153846153;   /* -40 and 40 degree */
+    //x->azimScale[1] = 0.166666666; x->azimScale[7] = 0.166666666;   /* -30 and 30 degree */
+    //x->azimScale[2] = 0.2; x->azimScale[3]=0.2; x->azimScale[4]=0.2; x->azimScale[5]=0.2; x->azimScale[6]=0.2;  /* -20 to 20 degree */
+    //x->azimScale[9] = 0.125;  		/* 50 degree */
+    //x->azimScale[10] = 0.1;		/* 60 degree */
+    //x->azimScale[11] = 0.066666666;      /* 70 degree */
+    //x->azimScale[12] = 0.033333333;	/* 80 degree */
+/*******************************************************************************
     x->azimOffset[0] = 0 ; 
     x->azimOffset[1] = 29 ;
     x->azimOffset[2] = 60 ;
@@ -287,7 +297,7 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
     x->azimOffset[10] = 328 ;
     x->azimOffset[11] = 347 ;
     x->azimOffset[12] = 360 ;
-
+***********************************************************************************/
     return (x);
 }
 
