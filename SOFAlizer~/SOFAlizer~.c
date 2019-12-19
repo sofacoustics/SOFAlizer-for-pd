@@ -1,4 +1,5 @@
 /* RT binaural filter: SOFAlizer~        */
+/* Fix the header!??? */
 /* based on KEMAR impulse measurement  */
 /* Pei Xiang, summer 2004              */
 /* Revised in Fall 2006 by Jorge Castellanos */
@@ -14,11 +15,6 @@
 #pragma warning( disable : 4305 )
 #endif
 
-/* elevation degree:      -40  -30  -20  -10   0   10  20  30  40  50  60  70  80  90   */
-/* index array:             0    1    2    3   4    5   6   7   8   9  10  11  12  13   */
-/* impulse reponse number: 29   31   37   37  37   37  37  31  29  23  19  13   7   1   */ 
-/* 0 degree reponse index:  0   29   60   97 134  171 208 245 276 305 328 347 360 367   */
-
 static t_class *SOFAlizer_class;
 
 int filter_length;
@@ -33,8 +29,8 @@ typedef struct _SOFAlizer
     t_outlet *left_channel ; 
     t_outlet *right_channel ; 
 
-    t_float azimuth ;             /* from 0 to 360 degrees */
-    t_float elevation ;           /* from -40 to 90 (degrees) */
+    t_float azimuth ;           
+    t_float elevation ;         
     t_float azi ;
     t_float ele ;
      
@@ -45,7 +41,7 @@ typedef struct _SOFAlizer
     t_float previousImpulse[2][128] ;
     t_float currentImpulse[2][128] ;
     t_float convBuffer[128] ;
-    t_float (*impulses)[2][128];          /* a 3D array of 368x2x128 */
+    t_float (*impulses)[2][128];     /* required???*/     /* a 3D array of 368x2x128 */
     t_float f ;                   /* dummy float for dsp */
     t_int bufferPin;
 } t_SOFAlizer;
@@ -58,91 +54,18 @@ static t_int *SOFAlizer_perform(t_int *w)
     t_float *left_out = (t_float *)(w[4]); 
     int blocksize = (int)(w[5]);
 
-    //unsigned ch_L, ch_R, 
     unsigned i;
 
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
-/**********************************************************	
-    if (x->ele < -40) 
-		x->ele = -40;
-    if (x->ele > 90)
-		x->ele = 90;
-    if (x->azi < 0 || x->azi > 360) 
-		x->azi = 0;
-    if (x->azi <= 180)
-    {
-		ch_L = 0;
-		ch_R = 1;
-	}
-    else
-    { 
-		ch_L = 1;
-		ch_R = 0;
-		x->azi = 360.0 - x->azi;
-	}
-*************************************************************/	
-   // x->ele *= 0.1;   /* divided by 10 since each elevation is 10 degrees apart */
-/****************************************************************************************************************+
-    if (x->ele < 8.) // if elevation is less than 80 degrees...
-    { 
-		int elevInt = (int)floor(x->ele); // A quantized version of the elevation    
-		unsigned elevGridIndex = elevInt + 4;  // Used as the index to the array of scaling factors for the azimuth (adding 4 because the lowest elevation is -4, so it starts at 0)
-		unsigned azimIntUp = (unsigned)(x->azi * x->azimScale[elevGridIndex+1]); // 
-        float azimFracUp = azimIntUp + 1.0 - x->azi * x->azimScale[elevGridIndex+1];
-		float azimFracUpInv = 1.0 - azimFracUp;
-		float elevFracUp = x->ele - elevInt * 1.0;
-    	unsigned azimIntDown = (unsigned)(x->azi * x->azimScale[elevGridIndex]);
-        float azimFracDown = azimIntDown + 1.0 - x->azi * x->azimScale[elevGridIndex];
-		float azimFracDownInv = 1.0 - azimFracDown;
-		float elevFracDown = 1.0 - elevFracUp;
-		unsigned lowerIdx = x->azimOffset[elevGridIndex] + azimIntDown;
-		unsigned upperIdx = x->azimOffset[elevGridIndex + 1] + azimIntUp;
-		
-		for (i = 0; i < 128; i++)
-		{
-			x->currentImpulse[ch_L][i] = elevFracDown *		// Interpolate the lower two HRIRs and multiply them by their "fraction"
-										(azimFracDown * x->impulses[lowerIdx][0][i] + 
-										azimFracDownInv * x->impulses[lowerIdx + 1][0][i]) + 
-										elevFracUp *		// Interpolate the upper two HRIRs and multiply them by their "fraction"
-										(azimFracUp * x->impulses[upperIdx][0][i] + 
-										azimFracUpInv * x->impulses[upperIdx + 1][0][i]);   
 
-			x->currentImpulse[ch_R][i] = elevFracDown *
-										(azimFracDown * x->impulses[lowerIdx][1][i] + 
-										azimFracDownInv * x->impulses[lowerIdx + 1][1][i]) + 
-										elevFracUp * 
-										(azimFracUp * x->impulses[upperIdx][1][i] + 
-										azimFracUpInv * x->impulses[upperIdx + 1][1][i]);  
-		}   
 
-    }
-    else	// if elevation is 80 degrees or more the interpolation requires only three points (because there's only one HRIR at 90 deg)
-    {
-    	unsigned azimIntDown = (unsigned)(x->azi * 0.033333); // Scale the azimuth to 12 (the number of HRIRs at 80 deg) discreet points
-        float azimFracDown = azimIntDown + 1.0 - x->azi * 0.033333;
-        float elevFracUp = x->ele - 8.0;
-		float elevFracDown = 9.0 - x->ele;
-		for (i = 0; i < 128; i++) {
-			
-			x->currentImpulse[ch_L][i] = elevFracDown * 
-										( azimFracDown * x->impulses[360+azimIntDown][0][i] +	// These two lines interpolate the lower two HRIRs
-										(1.0 - azimFracDown) * x->impulses[361+azimIntDown][0][i] )
-										+ elevFracUp * x->impulses[367][0][i];	// multiply the 90 degree HRIR with its corresponding fraction
-			x->currentImpulse[ch_R][i] = elevFracDown * 
-										(azimFracDown * x->impulses[360+azimIntDown][1][i]  +
-										(1.0 - azimFracDown) * x->impulses[361+azimIntDown][1][i])
-										+ elevFracUp * x->impulses[367][1][i]; 
-		}
-
-	}
-***********************************************************************************/
 	float Pi = 3.1415926536;
 	values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
 	values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
 	values[2] = 1.4 * sin(Pi/180 * x->ele);
 	
-
+/* Diesen Teil ändern auf mysofa_getfilter_float()*/
 	int reg = 0;
 	reg = mysofa_lookup(hrtf->lookup, values);
 	reg = floor(reg /2);
@@ -152,6 +75,9 @@ static t_int *SOFAlizer_perform(t_int *w)
     int blockScale = 8192 / blocksize;
 
 	// Convolve the - interpolated - HRIRs (Left and Right) with the input signal.
+	/* 1) Wie möchtest du die Faltung durchführen???
+	   2) Wie wird in earplug die Faltung gemacht??? 
+	*/
     while (blocksize--)
     {
 		convSum[0] = 0; 
@@ -160,8 +86,8 @@ static t_int *SOFAlizer_perform(t_int *w)
 		inSample = *(in++);
 
 		x->convBuffer[x->bufferPin] = inSample;
-		unsigned scaledBlocksize = blocksize * blockScale;
-		unsigned blocksizeDelta = 8191 - scaledBlocksize;
+		unsigned scaledBlocksize = blocksize * blockScale; // wozu ist das???
+		unsigned blocksizeDelta = 8191 - scaledBlocksize;  // wozu ist das???
 		for (i = 0; i < 128; i++)
 		{ 
 			convSum[0] += (x->previousImpulse[0][i] * x->crossCoef[blocksizeDelta] + 
@@ -179,7 +105,7 @@ static t_int *SOFAlizer_perform(t_int *w)
         *left_out++ = convSum[0];
      	*right_out++ = convSum[1];
     }
-    return (w+6);
+    return (w+6); // warum gerade 6???
 }
 
 static void SOFAlizer_dsp(t_SOFAlizer *x, t_signal **sp)
