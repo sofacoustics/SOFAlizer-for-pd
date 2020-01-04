@@ -1,6 +1,7 @@
-/* RT binaural filter: SOFAlizer~        */
-/* based on KEMAR impulse measurement  */
-/* Pei Xiang, summer 2004              */
+/* RT binaural filter: SOFAlizer~		*/
+/* based on: 							*/
+/* RT binaural filter: earplug~       */
+/* Pei Xiang, summer 2004               */
 /* Revised in Fall 2006 by Jorge Castellanos */
 /* Revised in Spring 2009 by Hans-Christoph Steiner to compile in the data file */
 
@@ -14,45 +15,41 @@
 #pragma warning( disable : 4305 )
 #endif
 
-/* elevation degree:      -40  -30  -20  -10   0   10  20  30  40  50  60  70  80  90   */
-/* index array:             0    1    2    3   4    5   6   7   8   9  10  11  12  13   */
-/* impulse reponse number: 29   31   37   37  37   37  37  31  29  23  19  13   7   1   */ 
-/* 0 degree reponse index:  0   29   60   97 134  171 208 245 276 305 328 347 360 367   */
 
-static t_class *SOFAlizer_class;
+static t_class *SOFAlizer_tilde_class;
 
-int filter_length;
-struct MYSOFA_EASY *hrtf = NULL;
-int M;
-int N;
-float values[3];
-
-typedef struct _SOFAlizer
+typedef struct _SOFAlizer_tilde
 {
     t_object x_obj; 
     t_outlet *left_channel ; 
     t_outlet *right_channel ; 
 
     t_float azimuth ;             /* from 0 to 360 degrees */
-    t_float elevation ;           /* from -40 to 90 (degrees) */
+    t_float elevation ;           /* from -90 to 90 (degrees) */
     t_float azi ;
     t_float ele ;
+    
+    int M , N;
+    struct MYSOFA_EASY *hrtf;
+    t_float values[3];
+    t_float leftIR[512]; // [-1. till 1]
+	t_float rightIR[512];
+	float leftDelay;          // unit is sec.
+	float rightDelay;         // unit is sec.
      
     t_float crossCoef[8192] ; 
-    t_float azimScale[13] ;
-    t_int azimOffset[13] ;
 
     t_float previousImpulse[2][128] ;
     t_float currentImpulse[2][128] ;
     t_float convBuffer[128] ;
-    t_float (*impulses)[2][128];          /* a 3D array of 368x2x128 */
+    //t_float (*impulses)[2][128];          /* a 3D array of 368x2x128 */
     t_float f ;                   /* dummy float for dsp */
     t_int bufferPin;
-} t_SOFAlizer;
+} t_SOFAlizer_tilde;
 
-static t_int *SOFAlizer_perform(t_int *w)
+static t_int *SOFAlizer_tilde_perform(t_int *w)
 {
-    t_SOFAlizer *x = (t_SOFAlizer *)(w[1]) ;
+    t_SOFAlizer_tilde *x = (t_SOFAlizer_tilde *)(w[1]) ;
     t_float *in = (t_float *)(w[2]);
     t_float *right_out = (t_float *)(w[3]);
     t_float *left_out = (t_float *)(w[4]); 
@@ -63,89 +60,18 @@ static t_int *SOFAlizer_perform(t_int *w)
 
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
-/**********************************************************	
-    if (x->ele < -40) 
-		x->ele = -40;
-    if (x->ele > 90)
-		x->ele = 90;
-    if (x->azi < 0 || x->azi > 360) 
-		x->azi = 0;
-    if (x->azi <= 180)
-    {
-		ch_L = 0;
-		ch_R = 1;
-	}
-    else
-    { 
-		ch_L = 1;
-		ch_R = 0;
-		x->azi = 360.0 - x->azi;
-	}
-*************************************************************/	
-   // x->ele *= 0.1;   /* divided by 10 since each elevation is 10 degrees apart */
-/****************************************************************************************************************+
-    if (x->ele < 8.) // if elevation is less than 80 degrees...
-    { 
-		int elevInt = (int)floor(x->ele); // A quantized version of the elevation    
-		unsigned elevGridIndex = elevInt + 4;  // Used as the index to the array of scaling factors for the azimuth (adding 4 because the lowest elevation is -4, so it starts at 0)
-		unsigned azimIntUp = (unsigned)(x->azi * x->azimScale[elevGridIndex+1]); // 
-        float azimFracUp = azimIntUp + 1.0 - x->azi * x->azimScale[elevGridIndex+1];
-		float azimFracUpInv = 1.0 - azimFracUp;
-		float elevFracUp = x->ele - elevInt * 1.0;
-    	unsigned azimIntDown = (unsigned)(x->azi * x->azimScale[elevGridIndex]);
-        float azimFracDown = azimIntDown + 1.0 - x->azi * x->azimScale[elevGridIndex];
-		float azimFracDownInv = 1.0 - azimFracDown;
-		float elevFracDown = 1.0 - elevFracUp;
-		unsigned lowerIdx = x->azimOffset[elevGridIndex] + azimIntDown;
-		unsigned upperIdx = x->azimOffset[elevGridIndex + 1] + azimIntUp;
-		
-		for (i = 0; i < 128; i++)
-		{
-			x->currentImpulse[ch_L][i] = elevFracDown *		// Interpolate the lower two HRIRs and multiply them by their "fraction"
-										(azimFracDown * x->impulses[lowerIdx][0][i] + 
-										azimFracDownInv * x->impulses[lowerIdx + 1][0][i]) + 
-										elevFracUp *		// Interpolate the upper two HRIRs and multiply them by their "fraction"
-										(azimFracUp * x->impulses[upperIdx][0][i] + 
-										azimFracUpInv * x->impulses[upperIdx + 1][0][i]);   
+    
 
-			x->currentImpulse[ch_R][i] = elevFracDown *
-										(azimFracDown * x->impulses[lowerIdx][1][i] + 
-										azimFracDownInv * x->impulses[lowerIdx + 1][1][i]) + 
-										elevFracUp * 
-										(azimFracUp * x->impulses[upperIdx][1][i] + 
-										azimFracUpInv * x->impulses[upperIdx + 1][1][i]);  
-		}   
-
-    }
-    else	// if elevation is 80 degrees or more the interpolation requires only three points (because there's only one HRIR at 90 deg)
-    {
-    	unsigned azimIntDown = (unsigned)(x->azi * 0.033333); // Scale the azimuth to 12 (the number of HRIRs at 80 deg) discreet points
-        float azimFracDown = azimIntDown + 1.0 - x->azi * 0.033333;
-        float elevFracUp = x->ele - 8.0;
-		float elevFracDown = 9.0 - x->ele;
-		for (i = 0; i < 128; i++) {
-			
-			x->currentImpulse[ch_L][i] = elevFracDown * 
-										( azimFracDown * x->impulses[360+azimIntDown][0][i] +	// These two lines interpolate the lower two HRIRs
-										(1.0 - azimFracDown) * x->impulses[361+azimIntDown][0][i] )
-										+ elevFracUp * x->impulses[367][0][i];	// multiply the 90 degree HRIR with its corresponding fraction
-			x->currentImpulse[ch_R][i] = elevFracDown * 
-										(azimFracDown * x->impulses[360+azimIntDown][1][i]  +
-										(1.0 - azimFracDown) * x->impulses[361+azimIntDown][1][i])
-										+ elevFracUp * x->impulses[367][1][i]; 
-		}
-
-	}
-***********************************************************************************/
 	float Pi = 3.1415926536;
-	values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
-	values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
-	values[2] = 1.4 * sin(Pi/180 * x->ele);
+	x->values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
+	x->values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
+	x->values[2] = 1.4 * sin(Pi/180 * x->ele);
 	
+	//mysofa_getfilter_float(x->hrtf, x->values[0], x->values[1], x->values[2], x->leftIR, x->rightIR, &x->leftDelay, &x->rightDelay);
 
-	int reg = 0;
-	reg = mysofa_lookup(hrtf->lookup, values);
-	reg = floor(reg /2);
+	int index = 0;
+	index = mysofa_lookup(x->hrtf->lookup, x->values);
+	
 
     float inSample;
 	float convSum[2]; // to accumulate the sum during convolution.
@@ -165,14 +91,14 @@ static t_int *SOFAlizer_perform(t_int *w)
 		for (i = 0; i < 128; i++)
 		{ 
 			convSum[0] += (x->previousImpulse[0][i] * x->crossCoef[blocksizeDelta] + 
-							x->impulses[reg][0][i] * x->crossCoef[scaledBlocksize]) * 
+							x->hrtf->hrtf->DataIR.values[index*x->N+i] * x->crossCoef[scaledBlocksize]) * 
 							x->convBuffer[(x->bufferPin - i) &127];
 			convSum[1] += (x->previousImpulse[1][i] * x->crossCoef[blocksizeDelta] + 
-							x->impulses[reg][1][i] * x->crossCoef[scaledBlocksize]) * 
+							x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i] * x->crossCoef[scaledBlocksize]) * 
 							x->convBuffer[(x->bufferPin - i) &127];
 
-			x->previousImpulse[0][i] = x->impulses[reg][0][i];
-			x->previousImpulse[1][i] = x->impulses[reg][1][i];
+			x->previousImpulse[0][i] = x->hrtf->hrtf->DataIR.values[index*x->N+i]; //x->leftIR[i];
+			x->previousImpulse[1][i] = x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i]; //x->rightIR[i];
 		}	
 		x->bufferPin = (x->bufferPin + 1) & 127;
   
@@ -182,81 +108,53 @@ static t_int *SOFAlizer_perform(t_int *w)
     return (w+6);
 }
 
-static void SOFAlizer_dsp(t_SOFAlizer *x, t_signal **sp)
+static void SOFAlizer_tilde_dsp(t_SOFAlizer_tilde *x, t_signal **sp)
 {
 		// callback, params, userdata, in_samples, out_L,		out_R,		blocksize.
-    dsp_add(SOFAlizer_perform, 5, x,  sp[0]->s_vec, sp[1]->s_vec, sp[2]->s_vec, sp[0]->s_n);
+    dsp_add(SOFAlizer_tilde_perform, 5, x,  sp[0]->s_vec, sp[1]->s_vec, sp[2]->s_vec, sp[0]->s_n);
 }
 
-static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
+void SOFAlizer_tilde_free(t_SOFAlizer_tilde *x)
 {
-    /*********************/
-    
-    int i, j, err;; 
-    
-    hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
-    if(hrtf == NULL)
-    return err;
-            
-    M = hrtf->hrtf->M;
-	N = hrtf->hrtf->N;
-	
-	fprintf(stderr, "mit_kemar_normal_pinna.sofa: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
-							hrtf->hrtf->M, hrtf->hrtf->N,
-							(unsigned int)(hrtf->hrtf->DataSamplingRate.values[0]),
-							mysofa_getAttribute(hrtf->hrtf->attributes, "DatabaseName"),
-							mysofa_getAttribute(hrtf->hrtf->attributes, "Title"),
-							mysofa_getAttribute(hrtf->hrtf->attributes, "ListenerShortName"));
+  mysofa_close(x->hrtf);
+}
 
-/************************/
-							
-    t_SOFAlizer *x = (t_SOFAlizer *)pd_new(SOFAlizer_class);
+static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
+{
+	t_SOFAlizer_tilde *x = (t_SOFAlizer_tilde *)pd_new(SOFAlizer_tilde_class);
     x->left_channel = outlet_new(&x->x_obj, gensym("signal"));
     x->right_channel = outlet_new(&x->x_obj, gensym("signal"));
     floatinlet_new(&x->x_obj, &x->azimuth) ;     /* 0 to 360 degrees */
-    floatinlet_new(&x->x_obj, &x->elevation) ;   /* -40 to 90 degrees */
+    floatinlet_new(&x->x_obj, &x->elevation) ;   /* -90 to 90 degrees */
 
     x->azimuth = azimArg ;
     x->elevation = elevArg ;
     
-/*****************************/
-    t_float SOFAlizer_impulses[M][2][128];
+    /*********************/
     
-    for (i = 0; i < M/2; i++) {
-	    for (j = 0 ; j < 128 ; j++) {
-			SOFAlizer_impulses[i][0][j] = hrtf->hrtf->DataIR.values[2*i*N+j];
-			SOFAlizer_impulses[i][1][j] = hrtf->hrtf->DataIR.values[(2*i+1)*N+j];
-		}
-    }
-/*********************/
+    int i, filter_length, err; 
+    //struct MYSOFA_EASY *hrtf1;
+    
+    x->hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
+    if(x->hrtf == NULL)
+    return err;
+    
+               
+    x->M = x->hrtf->hrtf->M;
+	x->N = x->hrtf->hrtf->N;
+	
+	fprintf(stderr, "mit_kemar_normal_pinna.sofa: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
+							x->hrtf->hrtf->M, x->hrtf->hrtf->N,
+							(unsigned int)(x->hrtf->hrtf->DataSamplingRate.values[0]),
+							mysofa_getAttribute(x->hrtf->hrtf->attributes, "DatabaseName"),
+							mysofa_getAttribute(x->hrtf->hrtf->attributes, "Title"),
+							mysofa_getAttribute(x->hrtf->hrtf->attributes, "ListenerShortName"));
 
-/**************************************
-    int i, j;
-    FILE *fp;
-    char buff[1024], *bufptr;
-    int filedesc;
-	filedesc = open_via_path(canvas_getdir(canvas_getcurrent())->s_name, "earplug_data.txt", "", buff, &bufptr, 1024, 0 );
-    if (filedesc >= 0) // If there was no error opening the text file...
-    {	
-		post("[SOFAlizer~] found impulse reponse file, overriding defaults:") ;
-        post("let's try loading %s/earplug_data.txt", buff);
-        fp = fdopen(filedesc, "r") ;  
-        for (i = 0; i < 368; i++) 
-        {
-            while(fgetc(fp) != 10) ;
-            for (j = 0 ; j < 128 ; j++) {
-				fscanf(fp, "%f %f ", &SOFAlizer_impulses[i][0][j], &SOFAlizer_impulses[i][1][j]);
-            }
-        }
-        fclose(fp) ;
-    }
-**************************************/
-
-    x->impulses = SOFAlizer_impulses;
-        
+/************************/
+							 
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
-    post("        elevation: -40 to 90 degrees. azimuth: 360") ;
+    post("        elevation: -90 to 90 degrees. azimuth: 360") ;
     post("        dont let blocksize > 8192\n"); 
 
 
@@ -275,38 +173,16 @@ static void *SOFAlizer_new(t_floatarg azimArg, t_floatarg elevArg)
 		x->crossCoef[i] = 1.0 * i / 8192;
 	}
 
-	// This is the scaling factor for the azimuth so that it corresponds to an HRTF in the KEMAR database
-    //x->azimScale[0] = 0.153846153; x->azimScale[8] = 0.153846153;   /* -40 and 40 degree */
-    //x->azimScale[1] = 0.166666666; x->azimScale[7] = 0.166666666;   /* -30 and 30 degree */
-    //x->azimScale[2] = 0.2; x->azimScale[3]=0.2; x->azimScale[4]=0.2; x->azimScale[5]=0.2; x->azimScale[6]=0.2;  /* -20 to 20 degree */
-    //x->azimScale[9] = 0.125;  		/* 50 degree */
-    //x->azimScale[10] = 0.1;		/* 60 degree */
-    //x->azimScale[11] = 0.066666666;      /* 70 degree */
-    //x->azimScale[12] = 0.033333333;	/* 80 degree */
-/*******************************************************************************
-    x->azimOffset[0] = 0 ; 
-    x->azimOffset[1] = 29 ;
-    x->azimOffset[2] = 60 ;
-    x->azimOffset[3] = 97 ;
-    x->azimOffset[4] = 134 ;
-    x->azimOffset[5] = 171 ;
-    x->azimOffset[6] = 208 ;
-    x->azimOffset[7] = 245 ;
-    x->azimOffset[8] = 276 ;
-    x->azimOffset[9] = 305 ;
-    x->azimOffset[10] = 328 ;
-    x->azimOffset[11] = 347 ;
-    x->azimOffset[12] = 360 ;
-***********************************************************************************/
+
     return (x);
 }
 
 void SOFAlizer_tilde_setup(void)
 {
-    SOFAlizer_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_new, 0,
-    	sizeof(t_SOFAlizer), CLASS_DEFAULT, A_DEFFLOAT, A_DEFFLOAT, 0);
+    SOFAlizer_tilde_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_tilde_new, 0,
+    	sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT, A_DEFFLOAT, A_DEFFLOAT, 0);
    
-    CLASS_MAINSIGNALIN(SOFAlizer_class, t_SOFAlizer, f);
+    CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);
    
-    class_addmethod(SOFAlizer_class, (t_method)SOFAlizer_dsp, gensym("dsp"), 0);
+    class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_dsp, gensym("dsp"), 0);
 }
