@@ -29,7 +29,7 @@ typedef struct _SOFAlizer_tilde
     t_float azi ;
     t_float ele ;
     
-    int M , N;
+    int M , N, cnt;
     struct MYSOFA_EASY *hrtf;
     t_float values[3];
     t_float leftIR[512]; // [-1. till 1]
@@ -42,7 +42,6 @@ typedef struct _SOFAlizer_tilde
     t_float previousImpulse[2][128] ;
     t_float currentImpulse[2][128] ;
     t_float convBuffer[128] ;
-    //t_float (*impulses)[2][128];          /* a 3D array of 368x2x128 */
     t_float f ;                   /* dummy float for dsp */
     t_int bufferPin;
 } t_SOFAlizer_tilde;
@@ -55,23 +54,21 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
     t_float *left_out = (t_float *)(w[4]); 
     int blocksize = (int)(w[5]);
 
-    //unsigned ch_L, ch_R, 
-    unsigned i;
-
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
-    
 
+	int i;
 	float Pi = 3.1415926536;
 	x->values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
 	x->values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
 	x->values[2] = 1.4 * sin(Pi/180 * x->ele);
-	
-	//mysofa_getfilter_float(x->hrtf, x->values[0], x->values[1], x->values[2], x->leftIR, x->rightIR, &x->leftDelay, &x->rightDelay);
 
-	int index = 0;
-	index = mysofa_lookup(x->hrtf->lookup, x->values);
+	x->cnt += 1;
 	
+	if (x->cnt > 1023) {
+		x->cnt = 0;
+		mysofa_getfilter_float(x->hrtf, x->values[0], x->values[1], x->values[2], x->leftIR, x->rightIR, &x->leftDelay, &x->rightDelay);
+	}
 
     float inSample;
 	float convSum[2]; // to accumulate the sum during convolution.
@@ -91,14 +88,14 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 		for (i = 0; i < 128; i++)
 		{ 
 			convSum[0] += (x->previousImpulse[0][i] * x->crossCoef[blocksizeDelta] + 
-							x->hrtf->hrtf->DataIR.values[index*x->N+i] * x->crossCoef[scaledBlocksize]) * 
+							x->leftIR[i] * x->crossCoef[scaledBlocksize]) *  //x->hrtf->hrtf->DataIR.values[index*x->N+i]
 							x->convBuffer[(x->bufferPin - i) &127];
 			convSum[1] += (x->previousImpulse[1][i] * x->crossCoef[blocksizeDelta] + 
-							x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i] * x->crossCoef[scaledBlocksize]) * 
+							 x->rightIR[i]* x->crossCoef[scaledBlocksize]) *  //x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i]
 							x->convBuffer[(x->bufferPin - i) &127];
 
-			x->previousImpulse[0][i] = x->hrtf->hrtf->DataIR.values[index*x->N+i]; //x->leftIR[i];
-			x->previousImpulse[1][i] = x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i]; //x->rightIR[i];
+			x->previousImpulse[0][i] =  x->leftIR[i]; //x->hrtf->hrtf->DataIR.values[index*x->N+i];
+			x->previousImpulse[1][i] =  x->rightIR[i]; //x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i];
 		}	
 		x->bufferPin = (x->bufferPin + 1) & 127;
   
@@ -130,15 +127,11 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
     x->azimuth = azimArg ;
     x->elevation = elevArg ;
     
-    /*********************/
-    
     int i, filter_length, err; 
-    //struct MYSOFA_EASY *hrtf1;
     
     x->hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
     if(x->hrtf == NULL)
     return err;
-    
                
     x->M = x->hrtf->hrtf->M;
 	x->N = x->hrtf->hrtf->N;
@@ -150,15 +143,28 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "Title"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "ListenerShortName"));
 
-/************************/
-							 
+/************************
+	float delays = 0;
+
+	for (i = 0; i < 3*x->M; i++)  
+		delays += x->hrtf->hrtf->DataDelay.values[i];
+		
+	if (delays != NULL) // NAN
+		post(" This SOFA file cannot be processed besause of IR delays");
+/**********************************/							 
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
     post("        dont let blocksize > 8192\n"); 
 
-
-       
+	x-> cnt = 0;
+	
+    for (i = 0; i < x->hrtf->hrtf->N; i++)
+    {
+		x->leftIR[i] = 0;
+		x->rightIR[i] = 0;
+	}
+        
     for (i = 0; i < 128 ; i++)
     {
          x->convBuffer[i] = 0; 
