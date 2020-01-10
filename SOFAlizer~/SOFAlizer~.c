@@ -137,21 +137,21 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 	x->N = x->hrtf->hrtf->N;
 	
 	fprintf(stderr, "mit_kemar_normal_pinna.sofa: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
-							x->hrtf->hrtf->M, x->hrtf->hrtf->N,
+							x->M, x->N,
 							(unsigned int)(x->hrtf->hrtf->DataSamplingRate.values[0]),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "DatabaseName"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "Title"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "ListenerShortName"));
 
-/************************
-	float delays = 0;
 
-	for (i = 0; i < 3*x->M; i++)  
-		delays += x->hrtf->hrtf->DataDelay.values[i];
-		
-	if (delays != NULL) // NAN
-		post(" This SOFA file cannot be processed besause of IR delays");
-/**********************************/							 
+	float delay = 0;
+	for (i = 0; i < x->M; i++) {  
+		delay = x->hrtf->hrtf->DataDelay.values[i];
+		if (delay =! 1.0) {
+			post(" Warning: This SOFA file will be processed wrong besause of IR delays!");
+			fprintf(stderr, " delay = %f", delay);
+		}
+	}			 
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
@@ -159,7 +159,7 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 
 	x-> cnt = 0;
 	
-    for (i = 0; i < x->hrtf->hrtf->N; i++)
+    for (i = 0; i < x->N; i++)
     {
 		x->leftIR[i] = 0;
 		x->rightIR[i] = 0;
