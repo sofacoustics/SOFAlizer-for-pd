@@ -65,25 +65,13 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 
 	x->cnt += 1;
 	
-	/*if (x->cnt > 1023) {
-		x->cnt = 0;
-		mysofa_getfilter_float_nointerp(x->hrtf, x->values[0], x->values[1], x->values[2], x->leftIR, x->rightIR, &x->leftDelay, &x->rightDelay);
-	}*/
 	int nearest;
 	int *neighbors;
-	float *fl;
-	float *fr;
 	int size = x->N * x->hrtf->hrtf->R;
 	nearest = mysofa_lookup(x->hrtf->lookup, x->values);
-	//neighbors = mysofa_neighborhood(x->hrtf->neighborhood, nearest);
-	float *res = x->hrtf->hrtf->DataIR.values + nearest * size;
-	
-	
-	fl = res;
-	fr = res + x->N;
-	for (i = x->N; i > 0; i--) {
-		x->leftIR[i] = *fl++;
-		x->rightIR[i] = *fr++;
+	for (i = 0; i < x->N; i++) {
+		x->leftIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + i];
+		x->rightIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + x->N + i];
 	}
 
     float inSample;
