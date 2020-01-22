@@ -32,6 +32,7 @@ typedef struct _SOFAlizer_tilde
     int M , N, cnt;
     struct MYSOFA_EASY *hrtf;
     t_float values[3];
+    t_float rad;
     t_float leftIR[512]; // [-1. till 1]
 	t_float rightIR[512];
 	float leftDelay;          // unit is sec.
@@ -56,19 +57,22 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
-
-	int i;
+		
+	int i, n;
 	float Pi = 3.1415926536;
-	x->values[0] = 1.4 * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
-	x->values[1] = 1.4 * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
-	x->values[2] = 1.4 * sin(Pi/180 * x->ele);
+	x->values[0] = x->rad * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
+	x->values[1] = x->rad * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
+	x->values[2] = x->rad * sin(Pi/180 * x->ele);
 
-	x->cnt += 1;
-	
 	int nearest;
-	int *neighbors;
+	//int *neighbors;
 	int size = x->N * x->hrtf->hrtf->R;
 	nearest = mysofa_lookup(x->hrtf->lookup, x->values);
+	x->cnt += 1;
+	if (x->cnt > 2756) {
+		fprintf(stderr, "index = %u \n", nearest);
+		x->cnt = 0;
+	}*/
 	for (i = 0; i < x->N; i++) {
 		x->leftIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + i];
 		x->rightIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + x->N + i];
@@ -78,8 +82,25 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 	float convSum[2]; // to accumulate the sum during convolution.
     int blockScale = 8192 / blocksize;
 
+	while (blocksize--)
+    {		
+		convSum[0] = 0; 
+		convSum[1] = 0;	
+		inSample = *(in++);
+		x->convBuffer[x->bufferPin] = inSample;
+			
+		for (n = 0; n < 128; n++) { 
+			convSum[0] += x->leftIR[n] * x->convBuffer[(x->bufferPin-n) &127];
+			convSum[1] += x->rightIR[n] * x->convBuffer[(x->bufferPin-n) &127];//[(n + x->bufferPin) % x->N];
+		}	
+		  
+        *left_out++ = convSum[0];
+     	*right_out++ = convSum[1];
+     	//x->bufferPin--;
+     	x->bufferPin = (x->bufferPin + 1) & 127;//(x->bufferPin + x->N) % x->N;
+    }
 	// Convolve the - interpolated - HRIRs (Left and Right) with the input signal.
-    while (blocksize--)
+    /*while (blocksize--)
     {
 		convSum[0] = 0; 
 		convSum[1] = 0;	
@@ -105,7 +126,7 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
   
         *left_out++ = convSum[0];
      	*right_out++ = convSum[1];
-    }
+    }*/
     return (w+6);
 }
 
@@ -159,30 +180,26 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
-    post("        dont let blocksize > 8192\n"); 
-
-	x-> cnt = 0;
 	
     for (i = 0; i < x->N; i++)
     {
-		x->leftIR[i] = 0;
+		x->leftIR[i] = 0;				// inititalise fir buffers
 		x->rightIR[i] = 0;
 	}
         
     for (i = 0; i < 128 ; i++)
     {
-         x->convBuffer[i] = 0; 
-		 x->previousImpulse[0][i] = 0; 
-		 x->previousImpulse[1][i] = 0;
+         x->convBuffer[i] = 0; 			  // initialise convolution buffer
     }
 	
-    x->bufferPin = 0;
-
-    for (i = 0; i < 8192 ; i++)
-    {	
-		x->crossCoef[i] = 1.0 * i / 8192;
+    x->bufferPin = 0;					 // initialise indexing of signal for convolution
+	
+	// Calculate radius for first measurement
+	for (i = 0; i < 3; i++) {			
+		x->values[i] = x->hrtf->hrtf->SourcePosition.values[i];
 	}
-
+	x->rad = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f));;
+	fprintf(stderr, "radius = %f \n", x->rad);
 
     return (x);
 }
