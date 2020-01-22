@@ -21,30 +21,24 @@ static t_class *SOFAlizer_tilde_class;
 typedef struct _SOFAlizer_tilde
 {
     t_object x_obj; 
-    t_outlet *left_channel ; 
-    t_outlet *right_channel ; 
+    t_outlet *left_channel ; 	  /* left output channel */
+    t_outlet *right_channel ;     /* right output channel */
 
-    t_float azimuth ;             /* from 0 to 360 degrees */
-    t_float elevation ;           /* from -90 to 90 (degrees) */
-    t_float azi ;
-    t_float ele ;
+    t_float azimuth ;             /* azimuth inlet from 0 to 360 degrees */
+    t_float elevation ;           /* elevation inlet from -90 to 90 (degrees) */
+    t_float azi ;				  /* azimuth for processing */
+    t_float ele ;				  /* elevation for processing */
     
-    int M , N, cnt;
-    struct MYSOFA_EASY *hrtf;
-    t_float values[3];
-    t_float rad;
-    t_float leftIR[512]; // [-1. till 1]
-	t_float rightIR[512];
-	float leftDelay;          // unit is sec.
-	float rightDelay;         // unit is sec.
-     
-    t_float crossCoef[8192] ; 
+    int M , N;					  /* M is number of impulse responses, N is length of impulse responses */
+    struct MYSOFA_EASY *hrtf;	  /* struct to read in SOFA files */
+    t_float values[3];			  /* values of cartesian coordinate system */
+    t_float rad;				  /* holds calculated radius */
+    t_float leftIR[x->N]; 		  /* holds left impulse response */
+	t_float rightIR[x->N];		  /* holds right impulse response */
 
-    t_float previousImpulse[2][128] ;
-    t_float currentImpulse[2][128] ;
-    t_float convBuffer[128] ;
+    t_float convBuffer[128];	  /* convolution buffer */
     t_float f ;                   /* dummy float for dsp */
-    t_int bufferPin;
+    t_int bufferPin;			  /* indexing in convolution buffer */ 
 } t_SOFAlizer_tilde;
 
 static t_int *SOFAlizer_tilde_perform(t_int *w)
@@ -58,21 +52,18 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
 		
-	int i, n;
+	int n;
+	
+	// Find nearest impulse reponses
 	float Pi = 3.1415926536;
 	x->values[0] = x->rad * cos(Pi/180 * x->ele) * cos(Pi/180 * x->azi);
 	x->values[1] = x->rad * cos(Pi/180 * x->ele) * sin(Pi/180 * x->azi);
 	x->values[2] = x->rad * sin(Pi/180 * x->ele);
-
+	
 	int nearest;
-	//int *neighbors;
 	int size = x->N * x->hrtf->hrtf->R;
 	nearest = mysofa_lookup(x->hrtf->lookup, x->values);
-	x->cnt += 1;
-	if (x->cnt > 2756) {
-		fprintf(stderr, "index = %u \n", nearest);
-		x->cnt = 0;
-	}*/
+	
 	for (i = 0; i < x->N; i++) {
 		x->leftIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + i];
 		x->rightIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + x->N + i];
@@ -80,10 +71,9 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 
     float inSample;
 	float convSum[2]; // to accumulate the sum during convolution.
-    int blockScale = 8192 / blocksize;
-
-	while (blocksize--)
-    {		
+	
+	// Convolution algorithm
+	while (blocksize--) {		
 		convSum[0] = 0; 
 		convSum[1] = 0;	
 		inSample = *(in++);
@@ -91,42 +81,15 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 			
 		for (n = 0; n < 128; n++) { 
 			convSum[0] += x->leftIR[n] * x->convBuffer[(x->bufferPin-n) &127];
-			convSum[1] += x->rightIR[n] * x->convBuffer[(x->bufferPin-n) &127];//[(n + x->bufferPin) % x->N];
+			convSum[1] += x->rightIR[n] * x->convBuffer[(x->bufferPin-n) &127];
 		}	
 		  
         *left_out++ = convSum[0];
      	*right_out++ = convSum[1];
-     	//x->bufferPin--;
-     	x->bufferPin = (x->bufferPin + 1) & 127;//(x->bufferPin + x->N) % x->N;
+     	
+     	x->bufferPin = (x->bufferPin + 1) & 127;
     }
-	// Convolve the - interpolated - HRIRs (Left and Right) with the input signal.
-    /*while (blocksize--)
-    {
-		convSum[0] = 0; 
-		convSum[1] = 0;	
-
-		inSample = *(in++);
-
-		x->convBuffer[x->bufferPin] = inSample;
-		unsigned scaledBlocksize = blocksize * blockScale;
-		unsigned blocksizeDelta = 8191 - scaledBlocksize;
-		for (i = 0; i < 128; i++)
-		{ 
-			convSum[0] += (x->previousImpulse[0][i] * x->crossCoef[blocksizeDelta] + 
-							x->leftIR[i] * x->crossCoef[scaledBlocksize]) *  //x->hrtf->hrtf->DataIR.values[index*x->N+i]
-							x->convBuffer[(x->bufferPin - i) &127];
-			convSum[1] += (x->previousImpulse[1][i] * x->crossCoef[blocksizeDelta] + 
-							 x->rightIR[i]* x->crossCoef[scaledBlocksize]) *  //x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i]
-							x->convBuffer[(x->bufferPin - i) &127];
-
-			x->previousImpulse[0][i] =  x->leftIR[i]; //x->hrtf->hrtf->DataIR.values[index*x->N+i];
-			x->previousImpulse[1][i] =  x->rightIR[i]; //x->hrtf->hrtf->DataIR.values[index*x->N+x->N+i];
-		}	
-		x->bufferPin = (x->bufferPin + 1) & 127;
-  
-        *left_out++ = convSum[0];
-     	*right_out++ = convSum[1];
-    }*/
+	
     return (w+6);
 }
 
@@ -154,6 +117,7 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
     
     int i, filter_length, err; 
     
+    // Read in SOFA file
     x->hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
     if(x->hrtf == NULL)
     return err;
@@ -167,12 +131,11 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "DatabaseName"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "Title"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "ListenerShortName"));
-
-
+	// Check for IR delays
 	float delay = 0;
 	for (i = 0; i < x->M; i++) {  
 		delay = x->hrtf->hrtf->DataDelay.values[i];
-		if (delay =! 1.0) {
+		if (delay > 1.0) {
 			post(" Warning: This SOFA file will be processed wrong besause of IR delays!");
 			fprintf(stderr, " delay = %f", delay);
 		}
@@ -181,18 +144,16 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
 	
-    for (i = 0; i < x->N; i++)
-    {
-		x->leftIR[i] = 0;				// inititalise fir buffers
+    for (i = 0; i < x->N; i++) {
+		x->leftIR[i] = 0;				  // initialise fir buffers
 		x->rightIR[i] = 0;
 	}
         
-    for (i = 0; i < 128 ; i++)
-    {
+    for (i = 0; i < 128 ; i++) {
          x->convBuffer[i] = 0; 			  // initialise convolution buffer
     }
 	
-    x->bufferPin = 0;					 // initialise indexing of signal for convolution
+    x->bufferPin = 0;					  // initialise index of signal for convolution
 	
 	// Calculate radius for first measurement
 	for (i = 0; i < 3; i++) {			
