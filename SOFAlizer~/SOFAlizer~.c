@@ -33,8 +33,8 @@ typedef struct _SOFAlizer_tilde
     struct MYSOFA_EASY *hrtf;	  /* struct to read in SOFA files */
     t_float values[3];			  /* values of cartesian coordinate system */
     t_float rad;				  /* holds calculated radius */
-    t_float leftIR[x->N]; 		  /* holds left impulse response */
-	t_float rightIR[x->N];		  /* holds right impulse response */
+    t_float leftIR[128]; 		      /* holds left impulse response */
+	t_float rightIR[128];		      /* holds right impulse response */
 
     t_float convBuffer[128];	  /* convolution buffer */
     t_float f ;                   /* dummy float for dsp */
@@ -52,7 +52,7 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
     x->azi = x->azimuth ; 
     x->ele = x->elevation ;
 		
-	int n;
+	int i, n;
 	
 	// Find nearest impulse reponses
 	float Pi = 3.1415926536;
@@ -64,7 +64,7 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 	int size = x->N * x->hrtf->hrtf->R;
 	nearest = mysofa_lookup(x->hrtf->lookup, x->values);
 	
-	for (i = 0; i < x->N; i++) {
+	for (i = 0; i < 128; i++) {
 		x->leftIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + i];
 		x->rightIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + x->N + i];
 	}
@@ -133,18 +133,22 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "ListenerShortName"));
 	// Check for IR delays
 	float delay = 0;
-	for (i = 0; i < x->M; i++) {  
+	int warn = 0;
+	for (i = 0; i < 2*x->M; i++) {  
 		delay = x->hrtf->hrtf->DataDelay.values[i];
 		if (delay > 1.0) {
-			post(" Warning: This SOFA file will be processed wrong besause of IR delays!");
+			warn = 1;
 			fprintf(stderr, " delay = %f", delay);
 		}
-	}			 
+	}	
+	if (warn == 1) {
+		post(" Warning: This SOFA file will be processed wrong besause of IR delays!");
+	}		 
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
 	
-    for (i = 0; i < x->N; i++) {
+    for (i = 0; i < 128; i++) {
 		x->leftIR[i] = 0;				  // initialise fir buffers
 		x->rightIR[i] = 0;
 	}
@@ -160,7 +164,7 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 		x->values[i] = x->hrtf->hrtf->SourcePosition.values[i];
 	}
 	x->rad = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f));;
-	fprintf(stderr, "radius = %f \n", x->rad);
+	fprintf(stderr, "\n radius = %f \n", x->rad);
 
     return (x);
 }
