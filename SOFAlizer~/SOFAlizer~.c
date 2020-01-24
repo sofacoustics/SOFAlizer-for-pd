@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 #include "m_pd.h"
 #include "SOFAlizer~.h"
 #include "mysofa.h"
@@ -29,12 +30,13 @@ typedef struct _SOFAlizer_tilde
     t_float azi ;				  /* azimuth for processing */
     t_float ele ;				  /* elevation for processing */
     
-    int M , N;					  /* M is number of impulse responses, N is length of impulse responses */
+    char filename[1000];          /* argument filename */
+    t_int M , N;				  /* M is number of impulse responses, N is length of impulse responses */
     struct MYSOFA_EASY *hrtf;	  /* struct to read in SOFA files */
     t_float values[3];			  /* values of cartesian coordinate system */
     t_float rad;				  /* holds calculated radius */
-    t_float leftIR[128]; 		      /* holds left impulse response */
-	t_float rightIR[128];		      /* holds right impulse response */
+    t_float leftIR[128]; 		  /* holds left impulse response */
+	t_float rightIR[128];		  /* holds right impulse response */
 
     t_float convBuffer[128];	  /* convolution buffer */
     t_float f ;                   /* dummy float for dsp */
@@ -104,29 +106,39 @@ void SOFAlizer_tilde_free(t_SOFAlizer_tilde *x)
   mysofa_close(x->hrtf);
 }
 
-static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
+static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_floatarg azimArg, t_floatarg elevArg)
 {
 	t_SOFAlizer_tilde *x = (t_SOFAlizer_tilde *)pd_new(SOFAlizer_tilde_class);
+	strcpy(x->filename, filenameArg->s_name);
+	if (x->filename[0] == '\0') {
+		error("No SOFA file specified");
+		return 0;
+	}
+	else {
+		post("SOFA file %s will be opend", x->filename);
+	}
     x->left_channel = outlet_new(&x->x_obj, gensym("signal"));
     x->right_channel = outlet_new(&x->x_obj, gensym("signal"));
     floatinlet_new(&x->x_obj, &x->azimuth) ;     /* 0 to 360 degrees */
     floatinlet_new(&x->x_obj, &x->elevation) ;   /* -90 to 90 degrees */
-
+	
     x->azimuth = azimArg ;
     x->elevation = elevArg ;
     
     int i, filter_length, err; 
     
     // Read in SOFA file
-    x->hrtf = mysofa_open("mit_kemar_normal_pinna.sofa", 44100, &filter_length, &err);
-    if(x->hrtf == NULL)
-    return err;
-               
+    x->hrtf = mysofa_open(x->filename, 44100, &filter_length, &err);
+    if(x->hrtf == NULL) {
+		error("SOFA file couldn't be opened");
+		return 0;
+	}
+	       
     x->M = x->hrtf->hrtf->M;
 	x->N = x->hrtf->hrtf->N;
 	
 	fprintf(stderr, "mit_kemar_normal_pinna.sofa: %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",
-							x->M, x->N,
+							(unsigned int)x->M, (unsigned int)x->N,
 							(unsigned int)(x->hrtf->hrtf->DataSamplingRate.values[0]),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "DatabaseName"),
 							mysofa_getAttribute(x->hrtf->hrtf->attributes, "Title"),
@@ -141,9 +153,7 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 			fprintf(stderr, " delay = %f", delay);
 		}
 	}	
-	if (warn == 1) {
-		post(" Warning: This SOFA file will be processed wrong besause of IR delays!");
-	}		 
+	if (warn == 1) post(" Warning: This SOFA file will be processed wrong besause of IR delays!");		 
     
     post("        SOFAlizer~: binaural filter with measured reponses\n") ;
     post("        elevation: -90 to 90 degrees. azimuth: 360") ;
@@ -164,15 +174,16 @@ static void *SOFAlizer_tilde_new(t_floatarg azimArg, t_floatarg elevArg)
 		x->values[i] = x->hrtf->hrtf->SourcePosition.values[i];
 	}
 	x->rad = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f));;
-	fprintf(stderr, "\n radius = %f \n", x->rad);
+	post("Radius is %f m. \n", x->rad);
 
     return (x);
 }
 
 void SOFAlizer_tilde_setup(void)
 {
-    SOFAlizer_tilde_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_tilde_new, 0,
-    	sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT, A_DEFFLOAT, A_DEFFLOAT, 0);
+    SOFAlizer_tilde_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_tilde_new,
+     	(t_method)SOFAlizer_tilde_free, sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT,
+     	 A_DEFSYMBOL, A_DEFFLOAT, A_DEFFLOAT, 0);
    
     CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);
    
