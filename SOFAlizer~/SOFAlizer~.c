@@ -75,9 +75,11 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 		x->rightIR[i] = x->hrtf->hrtf->DataIR.values[nearest * size + x->N + i];
 	}
 
-    float inSample1, inSample2;
+    float inSample1, inSample2, inPeak1 = 0, inPeak2 = 0;
 	float convSum1[2]; // to accumulate the sum during convolution.
 	float convSum2[2];
+	float inLevel1;
+	float inLevel2;
 	// Convolution algorithm
 	while (blocksize--) {		
 		convSum1[0] = 0; 
@@ -86,8 +88,12 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 		convSum2[1] = 0;	
 		inSample1 = *(in1++);
 		inSample2 = *(in2++);
+		inPeak1 = fmax(fabs(inSample1), inPeak1);
+		inPeak2 = fmax(fabs(inSample2), inPeak2);
+		inLevel1 = powf(10, inPeak1/20);
+		inLevel2 = powf(10, inPeak2/20);
 		x->convBuffer1[x->bufferPin] = inSample1; 
-		x->convBuffer2[x->bufferPin] = inSample2; 
+		x->convBuffer2[x->bufferPin] = inSample2;
 			
 		for (n = 0; n < 128; n++) { 
 			convSum1[0] += x->leftIR[n] * x->convBuffer1[(x->bufferPin-n) &127];
@@ -95,9 +101,15 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 			convSum2[0] += x->leftIR[n] * x->convBuffer2[(x->bufferPin-n) &127];
 			convSum2[1] += x->rightIR[n] * x->convBuffer2[(x->bufferPin-n) &127];
 		}	
-		  
-        *left_out++ = (convSum1[0] + convSum2[0]) / 2 ;
-     	*right_out++ = (convSum1[1] + convSum2[1]) / 2;
+		
+		if (inSample2 != 0) {
+			*left_out++ = convSum1[0] * inLevel1 + convSum2[0] * inLevel2;
+			*right_out++ = convSum1[1] * inLevel1 + convSum2[1] * inLevel2;
+		}
+		else {
+			*left_out++ = convSum1[0];
+			*right_out++ = convSum1[1];
+		}
      	
      	x->bufferPin = (x->bufferPin + 1) & 127;
     }
