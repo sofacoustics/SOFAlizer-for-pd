@@ -74,6 +74,8 @@ int buttonPin = 1; // calibration button pin
 int lastButtonValue = 0; // using a pulldown resistor
 int buttonBypass = 4; // bypass pin
 int lastBypassValue = 0; // using a pulldown resistor
+int buttonSofas = 2; // button to step through list of sofa files
+int lastSofasValue = 0; // using a pulldown resistor
 // Quaternions and Vectors
 imu::Quaternion gCal, gCalLeft, gCalRight, gIdleConj = {1, 0, 0, 0};
 imu::Quaternion qGravIdle, qGravCal, quat, steering, qRaw;
@@ -82,6 +84,7 @@ imu::Vector<3> gRaw;
 imu::Vector<3> gGravIdle, gGravCal;
 imu::Vector<3> ypr; //yaw pitch and roll angles
 
+int sofasState = 0; // state machine variable for switching sofa files
 int bypassState = 1; // state machine variable for bypass
 int calibrationState = 0; // state machine variable for calibration
 int setForward = 0; // flag for setting forward orientation
@@ -787,6 +790,21 @@ void render(BelaContext *context, void *userData)
 		}
 		lastBypassValue = bypassValue;
 		libpd_float("bypass", bypassState);
+		
+		//read the value of the button
+		int sofasValue = digitalRead(context, 0, buttonSofas); 
+
+		// if button wasn't pressed before and is pressed now
+		if( sofasValue != lastSofasValue && sofasValue == 1 ){
+			if (sofasState == 0) {
+				sofasState = 1;
+			}
+			else {
+				(sofasState = 0);
+			}
+		}
+		lastSofasValue = sofasValue;
+		libpd_float("sofas", sofasState);
 		
 		//switch(bypassState) {
 		//case 0: 
