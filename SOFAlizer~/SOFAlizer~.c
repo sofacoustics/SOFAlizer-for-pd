@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+//#include <libpd/z_libpd.h>
 #include "m_pd.h"
 #include "SOFAlizer~.h"
 #include "mysofa.h"
@@ -20,9 +21,6 @@
 
 #define len 128			/* define constant filter length to process */ 
 #define PI 4*atan(1) 	/* define constant PI */
-#define STATE_OPEN 0
-#define STATE_RUN 1
-
 	
 static t_class *SOFAlizer_tilde_class; 	/* main handle for class SOFAlizer_tilde_class */
 
@@ -30,12 +28,12 @@ static t_class *SOFAlizer_tilde_class; 	/* main handle for class SOFAlizer_tilde
 typedef struct _SOFAlizer_tilde
 {
     t_object x_obj; 		      /* pure data convention */
-    t_outlet *left_channel ; 	  /* left output channel */
-    t_outlet *right_channel ;     /* right output channel */
-    t_inlet *filenameIn;
+    t_outlet *left_channel; 	  /* left output channel */
+    t_outlet *right_channel;      /* right output channel */
+    //t_outlet *out_dsp;			  /* output to turn on and off dsp */
+    t_inlet *filenameIn;		  /* inlet to hold sofa filename */
     t_float azimuth;    		  /* azimuth inlet from 0 to 360 degrees */
     t_float elevation;            /* elevation inlet from -90 to 90 (degrees) */
-    int state;					  /* open or run */
     struct MYSOFA_EASY *sofa;	  /* struct to read in SOFA files */
     char filename[1000];          /* argument filename */
     t_int M;					  /* M is number of impulse responses */
@@ -50,9 +48,23 @@ typedef struct _SOFAlizer_tilde
     t_float f ;                   /* dummy float needed for signal inlet in dsp */
 } t_SOFAlizer_tilde;
 
+/*void SOFAlizer_dspState(t_float onoff) {
+	t_pd *pdSendObj = gensym("pd")->s_thing;
+	if (!pdSendObj) {
+		post("dspState: unable to find pd to change dsp state to %d", onoff);
+	}
+	else {
+		t_atom args[2];
+		SETSYMBOL(&args[0], gensym("dsp"));
+		SETFLOAT(&args[1], onoff);
+		pd_forwardmess(pdSendObj, 2, args);
+	}
+}*/
+
 static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg) 
 {
-	x->state = STATE_OPEN;
+	//outlet_float(x->out_dsp, 0);
+	//SOFAlizer_dspState(0);
 	strcpy(x->filename, filenameArg->s_name);   /* copy string from first argument */
 	if (x->filename[0] == '\0') {				/* if no argument is passed -> error */
 		error("No SOFA file specified");
@@ -101,7 +113,8 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
 	if (warn == 1){ 
 		error(" Warning: This SOFA file will be incorrectly processed besause of non zero IR delays!"); 
 	}
-	x->state = STATE_RUN; 	
+	//SOFAlizer_dspState(1);
+	//outlet_float(x->out_dsp, 1);
 }
 
 /* constructor: initializer for class */ 
@@ -118,16 +131,60 @@ static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_floatarg azimArg, t_fl
     x->elevation = elevArg;						/* pass argument elevation from inlet (-90 to 90 degrees) */	
     x->left_channel = outlet_new(&x->x_obj, gensym("signal"));  /* create outlet for left signal channel */
     x->right_channel = outlet_new(&x->x_obj, gensym("signal")); /* create outlet for right signal channel */
+    //x->out_dsp = outlet_new(&x->x_obj, &s_float);				/* create outlet to handle dsp status */
 	
 	post("        SOFAlizer~: binaural filter with measured reponses\n");
     post("        elevation: -90 to 90 degrees, azimuth: 0 to 360 degrees\n");
     
-	x->state = STATE_OPEN;
+    /* Same as SOFAlizer_tilde_open but in constructor */
 	strcpy(x->filename, filenameArg->s_name);   /* copy string from first argument */
 	if (x->filename[0] == '\0') {				/* if no argument is passed -> error */
 		error("No SOFA file specified");
+		return 0; 
+	}
+	else {
+		post("SOFA file %s will be opened..", x->filename); /* else file is opened */
+	}
+	
+	/* read in sofa file */
+    int filter_length, err;												/* variables to open sofa file */ 
+    x->sofa = mysofa_open(x->filename, 44100, &filter_length, &err);	/* function call from sofa api to open sofa file */ 
+    if(x->sofa == NULL) {												/* error if file can't be opened */
+		error("SOFA file %s couldn't be opened.", x->filename);
 		return 0;
 	}
+	
+	x->M = x->sofa->hrtf->M;	/* number of filters stored in sofa file */
+	x->N = x->sofa->hrtf->N;	/* numer of sample points per stored filter */
+	x->R = x->sofa->hrtf->R;	/* number of receivers */
+	
+	post("Metadata: %s %u HRTFs, %u samples @ %u Hz. %s, %s, %s.\n",					/* print out some metadata */
+							x->filename,(unsigned int)x->M, (unsigned int)x->N,				
+							(unsigned int)(x->sofa->hrtf->DataSamplingRate.values[0]),  	
+							mysofa_getAttribute(x->sofa->hrtf->attributes, "DatabaseName"),	
+							mysofa_getAttribute(x->sofa->hrtf->attributes, "Title"),
+							mysofa_getAttribute(x->sofa->hrtf->attributes, "ListenerShortName"));
+	
+	/* Calculate radius of first measurement */
+	int i;
+	for (i = 0; i < 3; i++) {				/* read in first three coordinates */		
+		x->values[i] = x->sofa->hrtf->SourcePosition.values[i];
+	}										/* calculate radius */
+	x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f)); 
+	post("Radius is %f m. \n", x->radius);
+	
+	/* Check for IR delays */
+	float delay = 0;    								/* holds delays */
+	int warn = 0;										/* to print out error message only once */
+	for (i = 0; i < (x->R * x->M); i++) {  
+		delay = x->sofa->hrtf->DataDelay.values[i];		/* read in possible delays */
+		if (delay > 1.0) {								/* if there are delays print a warning */
+			warn = 1;
+		}
+	}	
+	if (warn == 1){ 
+		error(" Warning: This SOFA file will be incorrectly processed besause of non zero IR delays!"); 
+	}	
 	 
 	/* Initialization */
     for (int i = 0; i < len; i++) {				
@@ -136,8 +193,6 @@ static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_floatarg azimArg, t_fl
 		x->convBuffer[i] = 0; 				/* initialise convolution buffer */
 	}
     x->bufferPin = 0;					  	/* initialise index of signal for convolution */
-
-	SOFAlizer_tilde_open(x, filenameArg);
     
     return (x);								/* return object x */
 }
@@ -150,51 +205,41 @@ static t_int *SOFAlizer_tilde_perform(t_int *w) /* array w contains the pointers
     t_float *right_out = (t_float *)(w[3]);					/* out_R */
     t_float *left_out = (t_float *)(w[4]); 					/* out_ L */
     int blocksize = (int)(w[5]);							/* blocksize */
+		
+	float azi = x-> azimuth; 	/* pass variable for azimuth */	
+	float ele = x->elevation ; 	/* pass variable for elevation */
+	int n;
+		
+	/* find nearest impulse reponses */
+	x->values[0] = x->radius * cos(PI/180 * ele) * cos(PI/180 * azi);	/* calculate coordinate x */
+	x->values[1] = x->radius * cos(PI/180 * ele) * sin(PI/180 * azi);	/* calculate coordinate y */
+	x->values[2] = x->radius * sin(PI/180 * ele);						/* calculate coordinate z */
+		
+	int nearest = mysofa_lookup(x->sofa->lookup, x->values);	/* function call from sofa api to find index of nearest set of hrtfs*/
+		
+	float inSample;							/* holds sample from input signal*/
+	float leftSum;							/* to accumulate the sum of left channel during convolution */
+	float rightSum;							/* to accumulate the sum of left channel during convolution */
+	int size = x->N * x->sofa->hrtf->R; 	/* number of samples of left and right hrtfs = 2 receivers */
+		
+	/* convolution algorithm */
+	while (blocksize--) {
 	
-	if (x->state == STATE_RUN) 
-	{
-		
-		float azi = x-> azimuth; 	/* pass variable for azimuth */	
-		float ele = x->elevation ; 	/* pass variable for elevation */
-		int n;
-		
-		/* find nearest impulse reponses */
-		x->values[0] = x->radius * cos(PI/180 * ele) * cos(PI/180 * azi);	/* calculate coordinate x */
-		x->values[1] = x->radius * cos(PI/180 * ele) * sin(PI/180 * azi);	/* calculate coordinate y */
-		x->values[2] = x->radius * sin(PI/180 * ele);						/* calculate coordinate z */
-		
-		int nearest = mysofa_lookup(x->sofa->lookup, x->values);	/* function call from sofa api to find index of nearest set of hrtfs*/
+		leftSum = 0;		/* initialize convolution sum left */
+		rightSum = 0;		/* initialize convolution sum right */
+		inSample = *(in++); /* get input signal */
+		x->convBuffer[x->bufferPin] = inSample;		/* place input sample in convolution buffer */
 			
-		float inSample;							/* holds sample from input signal*/
-		float leftSum;							/* to accumulate the sum of left channel during convolution */
-		float rightSum;							/* to accumulate the sum of left channel during convolution */
-		int size = x->N * x->sofa->hrtf->R; 	/* number of samples of left and right hrtfs = 2 receivers */
-		
-		/* convolution algorithm */
-		while (blocksize--) {
-	
-			leftSum = 0;		/* initialize convolution sum left */
-			rightSum = 0;		/* initialize convolution sum right */
-			inSample = *(in++); /* get input signal */
-			x->convBuffer[x->bufferPin] = inSample;		/* place input sample in convolution buffer */
+		for (n = 0; n < len; n++) { 				/* calculate convolution sum for whole buffers */
+			leftSum += x->sofa->hrtf->DataIR.values[nearest * size + n] * x->convBuffer[(x->bufferPin - n) & 127];
+			rightSum += x->sofa->hrtf->DataIR.values[nearest * size + x->N + n] * x->convBuffer[(x->bufferPin - n) & 127];
+		}	
 			
-			for (n = 0; n < len; n++) { 				/* calculate convolution sum for whole buffers */
-				leftSum += x->sofa->hrtf->DataIR.values[nearest * size + n] * x->convBuffer[(x->bufferPin - n) & 127];
-				rightSum += x->sofa->hrtf->DataIR.values[nearest * size + x->N + n] * x->convBuffer[(x->bufferPin - n) & 127];
-			}	
+		*left_out++ = leftSum;		/* output left convolution sum to left output */
+		*right_out++ = rightSum;	/* output right convolution sum to right output */
 			
-			*left_out++ = leftSum;		/* output left convolution sum to left output */
-			*right_out++ = rightSum;	/* output right convolution sum to right output */
-			
-			x->bufferPin = (x->bufferPin + 1) & 127;	/* update index of convolution buffer */
-		}
+		x->bufferPin = (x->bufferPin + 1) & 127;	/* update index of convolution buffer */
 	}
-	else {
-		while (blocksize--) {
-			*left_out++ = 0;		/* output left convolution sum to left output */
-			*right_out++ = 0;	/* output right convolution sum to right output */
-		}
-	}	
 	
     return (w+6); /* returns a pointer to integer, that points to the address behind the stored pointers of the routine */
 }
@@ -221,7 +266,7 @@ void SOFAlizer_tilde_setup(void)
      	 A_DEFSYMBOL, A_DEFFLOAT, A_DEFFLOAT, 0);
    
     CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);	/*  to provide signal-inlets */
-  
-	class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_open, gensym("open"), A_DEFSYMBOL, 0);
+    //class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_dspState, gensym("dspState"), A_FLOAT, 0); /* method to start and stop audio engine */
+	class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_open, gensym("open"), A_DEFSYMBOL, 0); /* method to open new sofa file */
     class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_dsp, gensym("dsp"), A_CANT, 0); /* provides a method for signal processing */
 }
