@@ -576,6 +576,8 @@ bool setup(BelaContext *context, void *userData)
 	pinMode(context, 0, buttonPin, INPUT); 
 	// set up bypass pin
 	pinMode(context, 0, buttonBypass, INPUT);
+	// set up sofas pin
+	pinMode(context, 0, buttonSofas, INPUT);
 
 	//******************************
 	
