@@ -31,7 +31,7 @@ EXTRA_DIST = m_pd.h mysofa.h
 #------------------------------------------------------------------------------#
 #
 CFLAGS = -DPD -I"$(PD_INCLUDE)" -Wall -W -g
-LDFLAGS += -L$(DIR)~/home/klemenz/SOFAlizer -Wl,-R$(DIR)~/home/klemenz/SOFAlizer '-Wl,-R$$ORIGIN'
+LDFLAGS += -L$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer -Wl,-R$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer '-Wl,-R$$ORIGIN'
 LIBS = libmysofa.a -lz
 
 #------------------------------------------------------------------------------#
