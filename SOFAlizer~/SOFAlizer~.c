@@ -133,8 +133,7 @@ static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_float lenArg)
 	if (lenArg == 0) {
 		lenArg = 128;								/* standard defined filter length is 128 */
 	}
-	x->len = lenArg;
-													/* user defined filter length */
+	x->len = lenArg;								/* user defined filter length */
 	
 	post("        SOFAlizer~: binaural filter with measured reponses\n");
     post("        elevation: -40 to 90 degrees, azimuth: 0 to 360 degrees\n");

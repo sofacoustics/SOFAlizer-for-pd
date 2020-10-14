@@ -739,37 +739,7 @@ void render(BelaContext *context, void *userData)
 				}
 			}
 		}
-
-		libpd_process_sys(); // process the block
-
-		// digital outputs
-		if(gDigitalEnabled)
-		{
-			// digital out at signal-rate
-			for (j = 0, p0 = gOutBuf; j < gLibpdBlockSize; ++j, ++p0) {
-				unsigned int digitalFrame = (digitalFrameBase + j);
-				for (k = 0, p1 = p0  + gLibpdBlockSize * gFirstDigitalChannel;
-					k < context->digitalChannels; k++, p1 += gLibpdBlockSize)
-				{
-					if(dcm.isSignalRate(k) && dcm.isOutput(k)){ // only process output channels that are handled at signal rate
-					digitalWriteOnce(context, digitalFrame, k, *p1 > 0.5);
-					}
-				}
-			}
-
-			// digital out at message-rate
-			dcm.processOutput(&context->digital[digitalFrameBase], gLibpdBlockSize);
-		}
-
-		// scope output
-		for (j = 0, p0 = gOutBuf; j < gLibpdBlockSize; ++j, ++p0) {
-			for (k = 0, p1 = p0 + gLibpdBlockSize * gFirstScopeChannel; k < gScopeChannelsInUse; k++, p1 += gLibpdBlockSize) {
-				gScopeOut[k] = *p1;
-			}
-			scope.log(gScopeOut[0], gScopeOut[1], gScopeOut[2], gScopeOut[3]);
-		}
-	
-
+		
 		//************ Added for BNO055 based head-tracking ***************
 
 		// this schedules the imu sensor readings
@@ -845,6 +815,36 @@ void render(BelaContext *context, void *userData)
 			} 
 		}
 		lastButtonValue = buttonValue;
+
+		libpd_process_sys(); // process the block
+
+		// digital outputs
+		if(gDigitalEnabled)
+		{
+			// digital out at signal-rate
+			for (j = 0, p0 = gOutBuf; j < gLibpdBlockSize; ++j, ++p0) {
+				unsigned int digitalFrame = (digitalFrameBase + j);
+				for (k = 0, p1 = p0  + gLibpdBlockSize * gFirstDigitalChannel;
+					k < context->digitalChannels; k++, p1 += gLibpdBlockSize)
+				{
+					if(dcm.isSignalRate(k) && dcm.isOutput(k)){ // only process output channels that are handled at signal rate
+					digitalWriteOnce(context, digitalFrame, k, *p1 > 0.5);
+					}
+				}
+			}
+
+			// digital out at message-rate
+			dcm.processOutput(&context->digital[digitalFrameBase], gLibpdBlockSize);
+		}
+
+		// scope output
+		for (j = 0, p0 = gOutBuf; j < gLibpdBlockSize; ++j, ++p0) {
+			for (k = 0, p1 = p0 + gLibpdBlockSize * gFirstScopeChannel; k < gScopeChannelsInUse; k++, p1 += gLibpdBlockSize) {
+				gScopeOut[k] = *p1;
+			}
+			scope.log(gScopeOut[0], gScopeOut[1], gScopeOut[2], gScopeOut[3]);
+		}
+	
 		
 		//************ 
 
