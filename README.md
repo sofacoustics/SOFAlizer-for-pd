@@ -34,7 +34,7 @@ If you don’t know them connect Board with USB to computer and use IDE in brows
 
 shows IP adresses of connection typs, example: see screenshot.
 
-screenshot1
+![bela1](https://user-images.githubusercontent.com/12407858/176189162-0264fbe9-0651-4cc3-9fd2-b048684279ec.jpg)
 
 IPv4 addresses (`inet`) from the screenshot (IPv6 could also be used instead of IPv4):
 3: usb0: 192.168.6.2		(for connection via USB)
@@ -45,7 +45,7 @@ Access to **IDE (Web-Interface)**: enter IP address: http://192.168.6.2/ (or LAN
 access via **SFTP**: same IP address (see above); user: root, no password
 possible tools: Filezilla, putty, terminal,….
 
-screenshot2
+![bela2](https://user-images.githubusercontent.com/12407858/176189245-2828d993-845b-4cc7-8b0b-4100cafd6170.jpg)
 
 If access via SFTP is not working: check */etc/ssh/sshd_config*, it must contain (uncommented):
 
@@ -105,7 +105,9 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
 * Delete *libmysofa.a* from folder */SOFAlizer_compile/*
 * Copy *libmysofa.a* from */root/Bela/projects/libmysofa/build/src* (see chapter libmysofa) into the directory */root/Bela/projects/SOFAlizer_compile/* (overwrite if existing)
 * in directory */root/Bela/projects/SOFAlizer_compile/* edit address of LDFLAGS, and add library lgcov: in file Makefile (rows 34-35 in my case): → 
-    `LDFLAGS += -L$(DIR)~/Bela/projects/SOFAlizer_compile -Wl,-R$(DIR)~/Bela/projects/SOFAlizer_compile '-Wl,-R$$ORIGIN'`
+    `LDFLAGS += -L$(DIR)~/Bela/![bela1](https://user-images.githubusercontent.com/12407858/176188968-081f6b09-54a1-4bfd-835d-8f0e2f713643.jpg)
+![bela2](https://user-images.githubusercontent.com/12407858/176188969-195e8237-f61b-4c8f-87e9-10be233b71df.jpg)
+projects/SOFAlizer_compile -Wl,-R$(DIR)~/Bela/projects/SOFAlizer_compile '-Wl,-R$$ORIGIN'`
     `LIBS = libmysofa.a -lz -lgcov`
 * run Makefile (command: `make`) in folder of Makefile file
 * SOFAlizer~.pd_linux wird erstellt, kopieren nach *~/Bela/projects/pd-externals*:
@@ -163,3 +165,6 @@ To run SOFAlizer without a computer, configure first in IDE:
 * when switching on the Bela Board give it a few minutes to load the SOFA file
 * button ‘trigangle’ on Bela Board: switch between standby and spatialize
 * button ‘dot’ on Bela Board: reset position to 0° / 0°
+
+
+
