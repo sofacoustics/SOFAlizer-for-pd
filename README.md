@@ -94,7 +94,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
     * → Libraries are created; \*.a files are stored in */root/Bela/projects/libmysofa/build/src* 
 (Some tests take long; file *libmysofa.a* will be needed for SOFAlizer later!)
 ### Install SOFAlizer
-* download zip file: https://github.com/sofacoustics/SOFAlizer-for-pd download zip file
+* download zip file: https://github.com/sofacoustics/SOFAlizer-for-pd
 * extract zip file
 * [remark miho: I used the version from *P:\Projects\HRTF_measurement\SOFA\Software\SOFAlizer-for-pd\SOFAlizer-for-pd-master 20201012*]
 * Connect Bela Board with LAN and USB (to PC) 
