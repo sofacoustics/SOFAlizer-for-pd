@@ -145,20 +145,21 @@ Needs to be done just once, for every Bela board, should not change.
 * IDE: right in Project Settings menu (gearwheel symbol): change Block size (audio frames) to same value (32 for instance), or higher
 
 ### Run SOFAlizer
-Prepare hardware
+#### Prepare hardware
 * mount tracker on top of headphones
 * connect headphones to out connection
 * connect audio input to an audio device
-With a computer
+#### With a computer
 * IDE: Navigate to project SOFAlizer
 * select *_main.pd*
 * run (refresh button left at the bottom)
 * takes ~3 minutes to run!!
-Without a computer
+#### Without a computer
 To run SOFAlizer without a computer, configure first in IDE:
 * right in Project Settings menu (gearwheel symbol)
 * scroll down to “Run project on boot”
 * set: *SOFAlizer*
+#### Bela Board
 * when switching on the Bela Board give it a few minutes to load the SOFA file
 * button ‘trigangle’ on Bela Board: switch between standby and spatialize
 * button ‘dot’ on Bela Board: reset position to 0° / 0°
