@@ -85,7 +85,7 @@ imu::Vector<3> gGravIdle, gGravCal;
 imu::Vector<3> ypr; //yaw pitch and roll angles
 
 int sofasState = 0; // state machine variable for switching sofa files
-int bypassState = 1; // state machine variable for bypass
+int bypassState = 0; // state machine variable for bypass
 int calibrationState = 0; // state machine variable for calibration
 int setForward = 0; // flag for setting forward orientation
 
@@ -743,10 +743,11 @@ void render(BelaContext *context, void *userData)
 		//************ Added for BNO055 based head-tracking ***************
 
 		// this schedules the imu sensor readings
-		if(++readCount >= readIntervalSamples) {
+		if(readCount >= readIntervalSamples) {
 			readCount = 0;
 			Bela_scheduleAuxiliaryTask(i2cTask);
 		}
+		readCount += gLibpdBlockSize;
 		
 		//read the value of the button
 		int bypassValue = digitalRead(context, 0, buttonBypass); 
