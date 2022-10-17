@@ -1,2 +1,2 @@
-![PD_main](https://user-images.githubusercontent.com/58428856/196137937-ba78f9dd-0480-4957-912e-cbc886319146.jpg)
+![PD_main](https://user-images.githubusercontent.com/58428856/196144607-0630f17f-1815-4bb5-a8fd-06d2f1314aed.jpg)
 
