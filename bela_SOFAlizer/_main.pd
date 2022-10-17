@@ -1,80 +1,109 @@
-#N canvas 665 161 918 720 12;
+#N canvas 128 241 1386 720 12;
 #X obj 131 420 dac~;
-#X obj 280 57 r bno-yaw;
-#X obj 429 60 r bno-pitch;
+#X obj 260 56 r bno-yaw;
+#X obj 404 57 r bno-pitch;
 #X obj 136 270 r bypass;
 #X obj 430 335 change;
 #X obj 12 311 *~ 1;
 #X obj 246 324 - 1;
 #X obj 214 356 *~ -1;
 #X obj 14 55 adc~;
-#X obj 280 88 * 180;
-#X obj 280 113 / 3.1415;
-#X obj 429 90 * 180;
-#X obj 429 116 / 3.1415;
-#X obj 735 165 openpanel;
-#X obj 735 64 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#X obj 301 100 * 180;
+#X obj 301 125 / 3.1415;
+#X obj 447 104 * 180;
+#X obj 447 130 / 3.1415;
+#X obj 749 164 openpanel;
+#X obj 749 63 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000
 #000000;
-#X obj 565 264 select 0 1 2 3;
-#X msg 565 325 subject_003.sofa;
-#X msg 636 406 hrtf_c_nh906.sofa;
-#X msg 588 351 mit_kemar_normal_pinna.sofa;
-#X msg 613 376 mit_kemar_large_pinna.sofa;
-#X obj 565 210 f;
-#X obj 607 211 + 1;
-#X obj 660 60 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#X obj 579 263 select 0 1 2 3;
+#X msg 579 324 subject_003.sofa;
+#X msg 650 405 hrtf_c_nh906.sofa;
+#X msg 602 350 mit_kemar_normal_pinna.sofa;
+#X msg 627 375 mit_kemar_large_pinna.sofa;
+#X obj 579 209 f;
+#X obj 621 210 + 1;
+#X obj 674 59 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
 #000000 0 1;
-#X obj 565 236 % 4;
-#X obj 565 407 symbol;
-#X obj 565 57 r sofas;
-#X obj 565 114 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#X obj 579 235 % 4;
+#X obj 579 406 symbol;
+#X obj 579 56 r sofas;
+#X obj 579 113 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
 #000000 0 1;
-#X obj 565 137 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 579 136 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
-#X obj 566 86 change;
-#X obj 280 141 % 360;
+#X obj 580 85 change;
+#X obj 301 153 % 360;
 #X obj 175 181 -30;
 #X obj 414 183 + 30;
 #X obj 414 208 % 360;
 #X obj 175 207 % 360;
-#X obj 565 159 delay 1000;
-#X obj 565 186 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 579 158 delay 1000;
+#X obj 579 185 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
 #X obj 53 235 SOFAlizer~ hrtf_c_nh906.sofa 128;
 #X obj 296 235 SOFAlizer~ hrtf_c_nh906.sofa 128;
 #X text 116 24 switch SOFA files;
-#X text 277 22 azimuth angle;
-#X text 421 24 elevation angle;
+#X text 257 21 azimuth angle;
+#X text 396 21 elevation angle;
 #X obj 126 58 r sofa;
-#X text 112 269 on;
-#X text 211 270 off;
-#X text 562 26 button;
-#X text 618 26 toggle switch;
-#X text 722 27 search file;
-#X text 584 135 debounce button;
+#X text 112 270 on;
+#X text 211 271 off;
+#X text 576 25 button;
+#X text 632 25 toggle switch;
+#X text 736 26 search file;
+#X text 598 134 debounce button;
 #X text 11 22 audio input;
-#X text 562 7 Switch SOFA file through:;
-#X text 180 424 audio output;
-#X obj 565 433 s sofa;
-#X text 679 263 skip through SOFA files;
-#X text 335 148 calculate rad to deg;
-#X text 630 433 send filename to inlet;
+#X text 576 6 Switch SOFA file through:;
+#X text 180 425 audio output;
+#X obj 579 432 s sofa;
+#X text 693 262 skip through SOFA files;
+#X text 327 80 calculate rad to deg;
+#X text 644 432 send filename to inlet;
 #X obj 430 361 print bypass;
-#X obj 626 86 !=;
-#X obj 565 295 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 640 85 !=;
+#X obj 579 294 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
-#X obj 588 296 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 602 295 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
-#X obj 613 297 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 627 296 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
-#X obj 636 298 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#X obj 650 297 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
 #000000 #000000;
 #X obj 312 327 - 1;
 #X obj 310 357 *~ -1;
-#X text 151 355 ch:left;
-#X text 360 358 ch:right;
-#X obj 679 294 print HRTFs loaded from;
+#X text 151 356 ch:left;
+#X text 360 359 ch:right;
+#X obj 693 293 print HRTFs loaded from;
 #X obj 12 339 *~ 0.5;
+#X obj 896 144 readsf~ 1;
+#X msg 993 58 1;
+#X msg 896 103 open ./Lament.wav;
+#X obj 896 58 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#000000;
+#X msg 943 57 0;
+#X obj 896 169 s~ wav;
+#X obj 58 55 r~ wav;
+#X text 890 28 Load wav;
+#X obj 898 220 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#000000 0 1;
+#X obj 898 240 s bypass;
+#X text 894 199 Switch Bypass;
+#X obj 933 312 hsl 128 15 -180 180 0 0 empty empty azimuth\\\ -180°\\\ -\\\ 180°
+-2 -8 0 12 #fcfcfc #000000 #000000 0 1;
+#X obj 930 407 hsl 128 15 -60 90 0 0 empty empty elevation\\\ -60°\\\ -\\\ 90°
+-2 -8 0 12 #fcfcfc #000000 #000000 0 1;
+#X msg 899 361 0;
+#X obj 899 279 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X text 921 275 Calibration;
+#X obj 336 56 r azi;
+#X obj 930 335 s azi;
+#X obj 493 58 r ele;
+#X floatatom 998 434 5 0 0 0 - - - 0;
+#X floatatom 1002 334 5 0 0 0 - - - 0;
+#X obj 977 144 delay 100;
+#X obj 927 435 s ele;
+#X text 890 9 Manual Control:;
 #X connect 1 0 9 0;
 #X connect 2 0 11 0;
 #X connect 3 0 5 1;
@@ -142,3 +171,26 @@
 #X connect 62 0 0 1;
 #X connect 66 0 0 0;
 #X connect 66 0 0 1;
+#X connect 67 0 72 0;
+#X connect 67 1 88 0;
+#X connect 68 0 67 0;
+#X connect 69 0 67 0;
+#X connect 69 0 68 0;
+#X connect 70 0 69 0;
+#X connect 71 0 67 0;
+#X connect 73 0 5 0;
+#X connect 73 0 36 0;
+#X connect 73 0 37 0;
+#X connect 75 0 76 0;
+#X connect 78 0 84 0;
+#X connect 78 0 87 0;
+#X connect 79 0 86 0;
+#X connect 79 0 89 0;
+#X connect 80 0 78 0;
+#X connect 80 0 79 0;
+#X connect 81 0 80 0;
+#X connect 83 0 30 0;
+#X connect 83 0 31 0;
+#X connect 85 0 36 3;
+#X connect 85 0 37 3;
+#X connect 88 0 70 0;
