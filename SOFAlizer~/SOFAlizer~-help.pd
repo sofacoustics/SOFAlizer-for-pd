@@ -1,4 +1,4 @@
-#N canvas 1140 266 822 659 10;
+#N canvas 596 357 822 659 10;
 #X msg 534 87 \; pd dsp 1;
 #N canvas 0 22 385 256 (subpatch) 0;
 #X floatatom 261 193 0 0 0 0 cpu-meter - - 0;
@@ -97,8 +97,7 @@
 ;
 #X obj 155 443 tgl 15 0 empty empty Bypass 17 7 0 10 #fcfcfc #000000
 #000000 0 1;
-#X floatatom 259 194 5 0 0 0 - - - 0;
-#X text 301 195 Calibration;
+#X text 339 203 Calibration;
 #X floatatom 260 267 5 0 0 0 - - - 0;
 #X floatatom 453 268 5 0 0 0 - - - 0;
 #X text 27 89 This help file \, the SOFA files and the WAV file have
@@ -107,6 +106,9 @@ to hear effective filter effects. Fitler could be DSP intensive due
 to convolution.;
 #X obj 22 217 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000
 #000000;
+#X obj 265 202 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X msg 303 202 0;
 #X connect 5 0 45 0;
 #X connect 6 0 4 0;
 #X connect 6 0 4 1;
@@ -163,17 +165,18 @@ to convolution.;
 #X connect 59 0 30 0;
 #X connect 59 0 31 0;
 #X connect 59 1 60 0;
-#X connect 60 0 71 0;
+#X connect 60 0 70 0;
 #X connect 61 0 24 0;
 #X connect 61 0 25 0;
-#X connect 61 0 68 0;
+#X connect 61 0 67 0;
 #X connect 62 0 30 3;
 #X connect 62 0 31 3;
-#X connect 62 0 69 0;
+#X connect 62 0 68 0;
 #X connect 65 0 6 0;
 #X connect 65 0 7 0;
 #X connect 65 0 51 0;
 #X connect 65 0 5 0;
-#X connect 66 0 61 0;
-#X connect 66 0 62 0;
-#X connect 71 0 58 0;
+#X connect 70 0 58 0;
+#X connect 71 0 72 0;
+#X connect 72 0 61 0;
+#X connect 72 0 62 0;
