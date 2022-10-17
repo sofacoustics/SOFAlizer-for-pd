@@ -48,61 +48,62 @@ typedef struct _SOFAlizer_tilde     /* Data space of pd external */
 /* This function is called to open a SOFA file */
 static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg) 
 {
-	strcpy(x->filename, filenameArg->s_name);   
-	if (x->filename[0] == '\0')
-	{				
-		error("No SOFA file has been specified. \n");
-		return;
-	}
-	else 
-	{
-		post("SOFA file %s will be opened.. \n ", x->filename);
-	}
+    strcpy(x->filename, filenameArg->s_name);   
+    if (x->filename[0] == '\0')
+    {				
+        error("No SOFA file has been specified. \n");
+        return;
+    }
+    else 
+    {
+        post("SOFA file %s will be opened.. \n ", x->filename);
+    }
 	
     /* Function call from SOFA API to import SOFA file into struct x->sofa */
     int filter_length, err;											
     x->sofa = mysofa_open(x->filename, 44100, &filter_length, &err);	 
-    if(x->sofa == NULL) {												
-		error("SOFA file %s couldn't be opened. \n", x->filename);
-		return;
-	}
+    if(x->sofa == NULL) 
+    {												
+        error("SOFA file %s couldn't be opened. \n", x->filename);
+        return;
+    }
 	
-	x->M = x->sofa->hrtf->M;	/* Number of HRTF sets stored in SOFA file */
-	x->N = x->sofa->hrtf->N;	/* Numer of samples per HRTF*/
-	x->R = x->sofa->hrtf->R;	/* Number of receivers */
+    x->M = x->sofa->hrtf->M;	/* Number of HRTF sets stored in SOFA file */
+    x->N = x->sofa->hrtf->N;	/* Numer of samples per HRTF*/
+    x->R = x->sofa->hrtf->R;	/* Number of receivers */
 	
 
-	post("	Metadata: \n		File name: %s \n		Name of database: %s \n		Title: %s \n		Short name: %s \n		Sample rate: %u Hz \n		Number of HRTF sets: %u",
-							x->filename,
-							mysofa_getAttribute(x->sofa->hrtf->attributes, "DatabaseName"),	
-							mysofa_getAttribute(x->sofa->hrtf->attributes, "Title"),
-							mysofa_getAttribute(x->sofa->hrtf->attributes, "ListenerShortName"),
-							(unsigned int)(x->sofa->hrtf->DataSamplingRate.values[0]),
-							(unsigned int)x->M				
-							);
+    post("	Metadata: \n		File name: %s \n		Name of database: %s \n		Title: %s \n		Short name: %s \n		Sample rate: %u Hz \n		Number of HRTF sets: %u",
+                     x->filename,
+                     mysofa_getAttribute(x->sofa->hrtf->attributes, "DatabaseName"),	
+                     mysofa_getAttribute(x->sofa->hrtf->attributes, "Title"),
+                     mysofa_getAttribute(x->sofa->hrtf->attributes, "ListenerShortName"),
+                     (unsigned int)(x->sofa->hrtf->DataSamplingRate.values[0]),
+                     (unsigned int)x->M				
+                     );
 	
-	/* Calculate radius of first source position with the three coordinates of the cartesian coordinate system */
-	int i;
-	for (i = 0; i < 3; i++) 
-	{		
-		x->values[i] = x->sofa->hrtf->SourcePosition.values[i];
-	}
+    /* Calculate radius of first source position with the three coordinates of the cartesian coordinate system */
+    int i;
+    for (i = 0; i < 3; i++) 
+    {		
+        x->values[i] = x->sofa->hrtf->SourcePosition.values[i];
+    }
     /* calculate radius */
-	x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f)); 
-	post("		Radius: %f m \n		Filter length: %u samples \n		Processed filter length: %u samples \n",
-				x->radius, (unsigned int)x->N, x->len
-				);
+    x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f)); 
+    post("		Radius: %f m \n		Filter length: %u samples \n		Processed filter length: %u samples \n",
+                x->radius, (unsigned int)x->N, x->len
+                );
 	
-	/* Check for IR delays for number of receivers x->R */
-	float delay = 0;    																		
-	for (i = 0; i < x->R; i++)
-	{  
-		delay = x->sofa->hrtf->DataDelay.values[i];
-		if (delay != 0.0)
-		{							
-			error("		Warning: This SOFA file will be processed incorrectly besause of non zero IR delays! \n"); 
-		}
-	}
+    /* Check for IR delays for number of receivers x->R */
+    float delay = 0;    																		
+    for (i = 0; i < x->R; i++)
+    {  
+        delay = x->sofa->hrtf->DataDelay.values[i];
+        if (delay != 0.0)
+        {							
+            error("		Warning: This SOFA file will be processed incorrectly besause of non zero IR delays! \n"); 
+        }
+    }
 }
 
 /* Constructor: Initializer of class SOFAlizer~. It is called directly after setup function */
@@ -120,24 +121,26 @@ static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_float lenArg)
     x->left_channel = outlet_new(&x->x_obj, gensym("signal"));  
     x->right_channel = outlet_new(&x->x_obj, gensym("signal")); 
 	
-	if (lenArg == 0) {
-		lenArg = 128;		/* Standard defined filter length is 128 */
-	}
-	x->len = lenArg;		/* User defined filter length */
+    if (lenArg == 0)
+    {
+        lenArg = 128;       /* Standard defined filter length is 128 */
+    }
+    x->len = lenArg;        /* User defined filter length */
 	
-	post("SOFAlizer~: Interactive, binaural real-time syntheses with HRTF sets provided from a SOFA file. \n");
+    post("SOFAlizer~: Interactive, binaural real-time syntheses with HRTF sets provided from a SOFA file. \n");
     
     /* Open SOFA file */
     SOFAlizer_tilde_open(x, filenameArg);
 	 
     /* Initialization */
-    for (int i = 0; i < maxlen; i++) {									
-		x->convBuffer[i] = 0; 				
-	}
+    for (int i = 0; i < maxlen; i++) 
+    {									
+        x->convBuffer[i] = 0; 				
+    }
     x->bufferPin = 0;					  	
     x->block  = 0;							
     
-    return (x);		/* Return object x */
+    return (x);            /* Return object x */
 }
 
 /* Callback function perform routine that is called from DSP method*/
@@ -151,10 +154,11 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
     t_float *left_out = (t_float *)(w[4]);                 /* Output stream left */
     int blocksize = (int)(w[5]);                           /* PD's block size */
     
-    if (x->block == 0) {
+    if (x->block == 0)
+    {
         post("Block size is %u", blocksize);
         x->block = 1;
-	}
+    }
 	
     float azi = x-> azimuth; 		
     float ele = x->elevation ; 	
