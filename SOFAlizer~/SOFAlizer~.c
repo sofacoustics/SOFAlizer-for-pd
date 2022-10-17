@@ -74,13 +74,13 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
 	
 
     post("	Metadata: \n		File name: %s \n		Name of database: %s \n		Title: %s \n		Short name: %s \n		Sample rate: %u Hz \n		Number of HRTF sets: %u",
-                     x->filename,
-                     mysofa_getAttribute(x->sofa->hrtf->attributes, "DatabaseName"),	
-                     mysofa_getAttribute(x->sofa->hrtf->attributes, "Title"),
-                     mysofa_getAttribute(x->sofa->hrtf->attributes, "ListenerShortName"),
-                     (unsigned int)(x->sofa->hrtf->DataSamplingRate.values[0]),
-                     (unsigned int)x->M				
-                     );
+                         x->filename,
+                         mysofa_getAttribute(x->sofa->hrtf->attributes, "DatabaseName"),	
+                         mysofa_getAttribute(x->sofa->hrtf->attributes, "Title"),
+                         mysofa_getAttribute(x->sofa->hrtf->attributes, "ListenerShortName"),
+                         (unsigned int)(x->sofa->hrtf->DataSamplingRate.values[0]),
+                         (unsigned int)x->M				
+                         );
 	
     /* Calculate radius of first source position with the three coordinates of the cartesian coordinate system */
     int i;
@@ -88,11 +88,11 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
     {		
         x->values[i] = x->sofa->hrtf->SourcePosition.values[i];
     }
-    /* calculate radius */
+    /* Calculate radius */
     x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f)); 
     post("		Radius: %f m \n		Filter length: %u samples \n		Processed filter length: %u samples \n",
-                x->radius, (unsigned int)x->N, x->len
-                );
+            x->radius, (unsigned int)x->N, x->len
+            );
 	
     /* Check for IR delays for number of receivers x->R */
     float delay = 0;    																		
@@ -101,7 +101,7 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
         delay = x->sofa->hrtf->DataDelay.values[i];
         if (delay != 0.0)
         {							
-            error("		Warning: This SOFA file will be processed incorrectly besause of non zero IR delays! \n"); 
+            error("Warning: This SOFA file will be processed incorrectly besause of non zero IR delays! \n"); 
         }
     }
 }
@@ -209,8 +209,8 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
 static void SOFAlizer_tilde_dsp(t_SOFAlizer_tilde *x, t_signal **sp)
 {
     /* Adds a perform routine to dsp */
-    dsp_add(SOFAlizer_tilde_perform,	 5,		 		x,		  sp[0]->s_vec,		 sp[1]->s_vec,		 sp[2]->s_vec,		 sp[0]->s_n);
-            /* Callback function   NumberOfParam.   Data space    Input signal    Output signal right  Output signal left   PD's block size. */
+    dsp_add(SOFAlizer_tilde_perform,     5,             x,        sp[0]->s_vec,   sp[1]->s_vec,        sp[2]->s_vec,        sp[0]->s_n);
+         /* Callback function      NumberOfParam.   Data space    Input signal    Output signal right  Output signal left   PD's block size. */
 }
 
 
