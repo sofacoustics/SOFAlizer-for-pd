@@ -17,4 +17,4 @@ Run Makefile: make
 
 SOFAlizer~.pd_linux is created.
 
-Copy external SOFAlizer~.pd_linux to pd-externals directory.
+Copy external SOFAlizer~.pd_linux, SOFAlizer~-help.pd, all *.sofa files and Lament.wav to pd-externals directory.
