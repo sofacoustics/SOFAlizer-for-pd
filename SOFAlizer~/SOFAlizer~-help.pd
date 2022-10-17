@@ -1,0 +1,179 @@
+#N canvas 1140 266 822 659 10;
+#X msg 534 87 \; pd dsp 1;
+#N canvas 0 22 385 256 (subpatch) 0;
+#X floatatom 261 193 0 0 0 0 cpu-meter - - 0;
+#X obj 260 129 cputime;
+#X obj 260 33 loadbang;
+#X obj 260 80 metro 1000;
+#X msg 260 61 1;
+#X obj 260 108 t b b;
+#X obj 260 170 * 0.1;
+#X obj 260 150 int;
+#X text 331 203 comment;
+#X connect 1 0 7 0;
+#X connect 2 0 4 0;
+#X connect 3 0 5 0;
+#X connect 4 0 3 0;
+#X connect 5 0 1 0;
+#X connect 5 1 1 1;
+#X connect 6 0 0 0;
+#X connect 7 0 6 0;
+#X coords 0 1 100 -1 120 20 1;
+#X restore 533 32 graph;
+#X msg 613 87 \; pd dsp 0;
+#X text 536 123 audio on;
+#X obj 139 590 dac~;
+#X obj 438 505 change;
+#X obj 22 484 *~ 1;
+#X obj 254 494 - 1;
+#X obj 222 526 *~ -1;
+#X obj 698 257 openpanel;
+#X obj 698 221 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 573 434 select 0 1 2 3;
+#X msg 573 495 subject_003.sofa;
+#X msg 644 576 hrtf_c_nh906.sofa;
+#X msg 596 521 mit_kemar_normal_pinna.sofa;
+#X msg 621 546 mit_kemar_large_pinna.sofa;
+#X obj 573 380 f;
+#X obj 615 381 + 1;
+#X obj 574 215 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#000000 0 1;
+#X obj 573 406 % 4;
+#X obj 573 577 symbol;
+#X obj 573 284 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#000000 0 1;
+#X obj 573 307 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 574 256 change;
+#X obj 187 305 -30;
+#X obj 420 307 + 30;
+#X obj 420 332 % 360;
+#X obj 187 331 % 360;
+#X obj 573 329 delay 1000;
+#X obj 573 356 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 61 405 SOFAlizer~ hrtf_c_nh906.sofa 128;
+#X obj 304 405 SOFAlizer~ hrtf_c_nh906.sofa 128;
+#X text 124 194 switch SOFA files;
+#X obj 160 219 r sofa;
+#X text 120 440 on;
+#X text 219 441 off;
+#X text 568 195 toggle switch;
+#X text 672 196 search file;
+#X text 592 305 debounce button;
+#X text 19 192 audio input;
+#X text 570 177 Switch SOFA file through:;
+#X text 188 595 audio output;
+#X obj 573 603 s sofa;
+#X text 687 433 skip through SOFA files;
+#X text 638 603 send filename to inlet;
+#X obj 438 531 print bypass;
+#X obj 634 256 !=;
+#X obj 573 465 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 596 466 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 621 467 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 644 468 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc
+#000000 #000000;
+#X obj 320 497 - 1;
+#X obj 318 527 *~ -1;
+#X text 159 526 ch:left;
+#X text 368 529 ch:right;
+#X obj 687 464 print HRTFs loaded from;
+#X msg 89 219 1;
+#X msg 47 218 0;
+#X msg 22 246 open ./Lament.wav;
+#X obj 22 278 readsf~ 1;
+#X obj 90 277 delay 100;
+#X obj 263 241 hsl 128 15 -180 180 0 0 empty empty azimuth\\\ -180°\\\ -\\\ 180°
+-2 -8 0 10 #fcfcfc #000000 #000000 0 1;
+#X obj 428 242 hsl 128 15 -60 90 0 0 empty empty elevation\\\ -60°\\\ -\\\ 90°
+-2 -8 0 10 #fcfcfc #000000 #000000 0 1;
+#X text 24 18 SOFAlizer~ - convolution binaural filter;
+#X text 23 49 This filter utilizes HRTF measurements from SOFA files
+;
+#X obj 155 443 tgl 15 0 empty empty Bypass 17 7 0 10 #fcfcfc #000000
+#000000 0 1;
+#X floatatom 259 194 5 0 0 0 - - - 0;
+#X text 301 195 Calibration;
+#X floatatom 260 267 5 0 0 0 - - - 0;
+#X floatatom 453 268 5 0 0 0 - - - 0;
+#X text 27 89 This help file \, the SOFA files and the WAV file have
+to be in the directory \, where PD externals are stored. Must use headphone
+to hear effective filter effects. Fitler could be DSP intensive due
+to convolution.;
+#X obj 22 217 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000
+#000000;
+#X connect 5 0 45 0;
+#X connect 6 0 4 0;
+#X connect 6 0 4 1;
+#X connect 7 0 8 1;
+#X connect 8 0 4 0;
+#X connect 9 0 20 0;
+#X connect 10 0 9 0;
+#X connect 11 0 47 0;
+#X connect 11 1 48 0;
+#X connect 11 2 49 0;
+#X connect 11 3 50 0;
+#X connect 12 0 20 0;
+#X connect 12 0 55 0;
+#X connect 13 0 20 0;
+#X connect 13 0 55 0;
+#X connect 14 0 20 0;
+#X connect 14 0 55 0;
+#X connect 15 0 20 0;
+#X connect 15 0 55 0;
+#X connect 16 0 17 0;
+#X connect 16 0 19 0;
+#X connect 17 0 16 1;
+#X connect 18 0 23 0;
+#X connect 19 0 11 0;
+#X connect 20 0 42 0;
+#X connect 21 0 22 0;
+#X connect 22 0 28 0;
+#X connect 23 0 21 0;
+#X connect 23 0 46 0;
+#X connect 24 0 27 0;
+#X connect 25 0 26 0;
+#X connect 26 0 31 2;
+#X connect 27 0 30 2;
+#X connect 28 0 29 0;
+#X connect 29 0 16 0;
+#X connect 30 0 8 0;
+#X connect 30 1 52 0;
+#X connect 31 0 8 0;
+#X connect 31 1 52 0;
+#X connect 33 0 30 1;
+#X connect 33 0 31 1;
+#X connect 46 0 23 0;
+#X connect 47 0 12 0;
+#X connect 48 0 14 0;
+#X connect 49 0 15 0;
+#X connect 50 0 13 0;
+#X connect 51 0 52 1;
+#X connect 52 0 4 1;
+#X connect 56 0 59 0;
+#X connect 57 0 59 0;
+#X connect 58 0 59 0;
+#X connect 58 0 56 0;
+#X connect 59 0 6 0;
+#X connect 59 0 30 0;
+#X connect 59 0 31 0;
+#X connect 59 1 60 0;
+#X connect 60 0 71 0;
+#X connect 61 0 24 0;
+#X connect 61 0 25 0;
+#X connect 61 0 68 0;
+#X connect 62 0 30 3;
+#X connect 62 0 31 3;
+#X connect 62 0 69 0;
+#X connect 65 0 6 0;
+#X connect 65 0 7 0;
+#X connect 65 0 51 0;
+#X connect 65 0 5 0;
+#X connect 66 0 61 0;
+#X connect 66 0 62 0;
+#X connect 71 0 58 0;

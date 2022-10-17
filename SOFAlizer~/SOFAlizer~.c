@@ -123,7 +123,7 @@ static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_float lenArg)
 	
     if (lenArg == 0)
     {
-        lenArg = 128;       /* Standard defined filter length is 128 */
+        lenArg = 128;       /* Standard defined filter length is 128 */ 
     }
     x->len = lenArg;        /* User defined filter length */
 	
