@@ -82,21 +82,19 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
                          (unsigned int)x->M				
                          );
 	
-    /* Calculate radius of first source position with the three coordinates of the cartesian coordinate system */
-    int i;
-    for (i = 0; i < 3; i++) 
+    /* Calculate radius of the first source position with the three coordinates of the cartesian coordinate system */
+    for (int i = 0; i < 3; i++) 
     {		
         x->values[i] = x->sofa->hrtf->SourcePosition.values[i];
     }
-    /* Calculate radius */
-    x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f)); 
+    x->radius = sqrtf(powf(x->values[0], 2.f) + powf(x->values[1], 2.f) + powf(x->values[2], 2.f));
     post("		Radius: %f m \n		Filter length: %u samples \n		Processed filter length: %u samples \n",
             x->radius, (unsigned int)x->N, x->len
             );
 	
     /* Check for IR delays for number of receivers x->R */
-    float delay = 0;    																		
-    for (i = 0; i < x->R; i++)
+    float delay = 0.0;    																		
+    for (int i = 0; i < x->R; i++)
     {  
         delay = x->sofa->hrtf->DataDelay.values[i];
         if (delay != 0.0)
@@ -107,9 +105,9 @@ static void SOFAlizer_tilde_open (t_SOFAlizer_tilde *x, t_symbol *filenameArg)
 }
 
 /* Constructor: Initializer of class SOFAlizer~. It is called directly after setup function */
-/* When a SOFAlizer~ object is created, two input parameters can be passed, */
-/* SOFA filename and processed filter length, where the second is mandatory. */
-static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_float lenArg)   
+/* A SOFAlizer~ object can be created with two mandatory input parameters: */
+/* SOFA filename (can be set through inlet) and processed filter length (default = 128) */
+static void *SOFAlizer_tilde_new(t_symbol *filenameArg, t_floatarg lenArg)   
 {
     /* Pointer to class data space */
     t_SOFAlizer_tilde *x = (t_SOFAlizer_tilde *)pd_new(SOFAlizer_tilde_class); 
@@ -176,7 +174,7 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
     float inSample;							
     float leftSum;							
     float rightSum;
-    /* Number of samples of left and right HRTFs = 2 receivers */						
+    /* Size of HRTF pair in HRTF set: Number of samples per HRTF multiplied by 2 receivers */						
     int size = x->N * x->sofa->hrtf->R; 	
 		
     /* Convolution algorithm */
@@ -189,11 +187,13 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
         inSample = *(in++); 						
         x->convBuffer[x->bufferPin] = inSample;		
 			
-        /* Calculate convolution sum for whole buffers */
+        /* Calculate circular convolution by mutiply and add: The convolution buffer is a ring buffer with the size of the impulse response, */
+        /* that is filled up with input samples in forward direction, but is shifted backwards when multiplied term by term and added */
+        /* with all values of the impulse response in forward direction. */
         for (int n = 0; n < x->len; n++)				
         { 				
-            leftSum += x->sofa->hrtf->DataIR.values[nearest * size + n] * x->convBuffer[(2*x->len + x->bufferPin - n) % x->len];	
-            rightSum += x->sofa->hrtf->DataIR.values[nearest * size + x->N + n] * x->convBuffer[(2*x->len + x->bufferPin - n) % x->len];
+            leftSum += x->sofa->hrtf->DataIR.values[nearest * size + n] * x->convBuffer[(x->len + x->bufferPin - n) % x->len];	
+            rightSum += x->sofa->hrtf->DataIR.values[nearest * size + x->N + n] * x->convBuffer[(x->len + x->bufferPin - n) % x->len];
         }	
         /* Output */
         *left_out++ = leftSum;						
@@ -227,10 +227,10 @@ void SOFAlizer_tilde_free(t_SOFAlizer_tilde *x)
 /* This setup function generates a new class SOFAlizer~ and its methods like constructor(initializer), free, open and dsp */
 void SOFAlizer_tilde_setup(void)
 {
-    SOFAlizer_tilde_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_tilde_new,               /* Generation of a new class */
-                            (t_method)SOFAlizer_tilde_free, sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT,
-                            A_DEFSYMBOL, A_DEFFLOAT, 0);
-   
+    SOFAlizer_tilde_class = class_new(gensym("SOFAlizer~"), (t_newmethod)SOFAlizer_tilde_new,               /* Generation of a new class with constructor, */
+                            (t_method)SOFAlizer_tilde_free, sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT,       /* with destructor and with its dataspace.*/
+                            A_DEFSYMBOL, A_DEFFLOAT, 0);                                                    /* Two mandatory input parameters at creation time */
+	
     CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);                                        /* To provide signal-inlets */
     class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_open, gensym("open"), A_DEFSYMBOL, 0); /* Method to open new SOFA file */
     class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_dsp, gensym("dsp"), A_CANT, 0);        /* Provides a method for signal processing */
