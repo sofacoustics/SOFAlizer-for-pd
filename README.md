@@ -80,7 +80,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
 #### libmysofa
 * download zip file: https://github.com/hoene/libmysofa  
 * extract zip file
-* [remark miho: I used the version from *P:\Projects\HRTF_measurement\SOFA\Software\SOFAlizer-for-pd\libmysofa-master 20200930*]
+* [remark miho: I used the version from *P: libmysofa-master 20200930*]
 * Connect Bela Board with LAN and USB (to PC) 
 * Open http://192.168.6.2/ in IDE (Browser) → File explorer → new project → “libmysofa” (any type)
 * delete all files from */root/Bela/projects/libmysofa* (SFTP)
@@ -96,7 +96,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
 ### Install SOFAlizer
 * download zip file: https://github.com/sofacoustics/SOFAlizer-for-pd
 * extract zip file
-* [remark miho: I used the version from *P:\Projects\HRTF_measurement\SOFA\Software\SOFAlizer-for-pd\SOFAlizer-for-pd-master 20201012*]
+* [remark miho: I used the version from *P: SOFAlizer-for-pd-master 20201012*]
 * Connect Bela Board with LAN and USB (to PC) 
 * Open http://192.168.6.2/ in IDE (Browser) → File explorer → new project → “SOFAlizer_compile” (any type)
 * delete all files from */root/Bela/projects/SOFAlizer_compile/* (SFTP)
