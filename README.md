@@ -108,7 +108,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
     `LDFLAGS += -L$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer -Wl,-R$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer '-Wl,-R$$ORIGIN'`
     `LIBS = libmysofa.a -lz -lgcov`
 * run Makefile (command: `make`) in folder of Makefile file
-* SOFAlizer~.pd_linux wird erstellt, kopieren nach *~/Bela/projects/pd-externals*:
+* SOFAlizer~.pd_linux is created, copy to *~/Bela/projects/pd-externals*:
     `cp SOFAlizer~.pd_linux ~/Bela/projects/pd-externals`
     
 ### Update existing SOFAlizer
