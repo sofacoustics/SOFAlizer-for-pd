@@ -105,9 +105,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
 * Delete *libmysofa.a* from folder */SOFAlizer_compile/*
 * Copy *libmysofa.a* from */root/Bela/projects/libmysofa/build/src* (see chapter libmysofa) into the directory */root/Bela/projects/SOFAlizer_compile/* (overwrite if existing)
 * in directory */root/Bela/projects/SOFAlizer_compile/* edit address of LDFLAGS, and add library lgcov: in file Makefile (rows 34-35 in my case): → 
-    `LDFLAGS += -L$(DIR)~/Bela/![bela1](https://user-images.githubusercontent.com/12407858/176188968-081f6b09-54a1-4bfd-835d-8f0e2f713643.jpg)
-![bela2](https://user-images.githubusercontent.com/12407858/176188969-195e8237-f61b-4c8f-87e9-10be233b71df.jpg)
-projects/SOFAlizer_compile -Wl,-R$(DIR)~/Bela/projects/SOFAlizer_compile '-Wl,-R$$ORIGIN'`
+    `LDFLAGS += -L$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer -Wl,-R$(DIR)~/home/SOFAlizer-for-pd/SOFAlizer '-Wl,-R$$ORIGIN'`
     `LIBS = libmysofa.a -lz -lgcov`
 * run Makefile (command: `make`) in folder of Makefile file
 * SOFAlizer~.pd_linux wird erstellt, kopieren nach *~/Bela/projects/pd-externals*:
