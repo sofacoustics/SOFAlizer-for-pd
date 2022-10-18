@@ -114,7 +114,7 @@ General remark: new projects are created in: */root/Bela/projects* (file access 
 ### Update existing SOFAlizer
 * Download: https://github.com/sofacoustics/SOFAlizer-for-pd download zip file
 * extract
-* http://192.168.6.2/ (IDE) im Browser öffnen → File explorer
+* open http://192.168.6.2/ (IDE) in web browser → File explorer
 * navigate to: */root/Bela/projects/SOFAlizer_compile/*
 * drag and drop file (for example *SOFAlizer~.c*) to the project window in browser and overwrite
 * optional (if not done during installation, details see previous chapter): 
