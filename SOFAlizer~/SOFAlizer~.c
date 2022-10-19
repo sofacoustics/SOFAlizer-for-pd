@@ -187,9 +187,9 @@ static t_int *SOFAlizer_tilde_perform(t_int *w)
         inSample = *(in++); 						
         x->convBuffer[x->bufferPin] = inSample;		
 			
-        /* Calculate circular convolution by mutiply and add: The convolution buffer is a ring buffer with the size of the impulse response, */
-        /* that is filled up with input samples in forward direction, but is shifted backwards when multiplied term by term and added */
-        /* with all values of the impulse response in forward direction. */
+        /* Calculate discrete circular convolution: The convolution buffer is a ring buffer with the same size as the impulse response and */
+        /* stores the input samples in normal direction. For convolution the sequence of the head-related transfer function (HRTF) is calculated */
+        /* with a backwards shifted sequence of the ring-buffer in a multiply–accumulate (MAC) function. */
         for (int n = 0; n < x->len; n++)				
         { 				
             leftSum += x->sofa->hrtf->DataIR.values[nearest * size + n] * x->convBuffer[(x->len + x->bufferPin - n) % x->len];	
@@ -231,7 +231,7 @@ void SOFAlizer_tilde_setup(void)
                             (t_method)SOFAlizer_tilde_free, sizeof(t_SOFAlizer_tilde), CLASS_DEFAULT,       /* with destructor and with its dataspace.*/
                             A_DEFSYMBOL, A_DEFFLOAT, 0);                                                    /* Two mandatory input parameters at creation time */
 	
-    CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);                                        /* To provide signal-inlets */
+    CLASS_MAINSIGNALIN(SOFAlizer_tilde_class, t_SOFAlizer_tilde, f);                                        /* To create signal-inlet as first inlet */
     class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_open, gensym("open"), A_DEFSYMBOL, 0); /* Method to open new SOFA file */
-    class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_dsp, gensym("dsp"), A_CANT, 0);        /* Provides a method for signal processing */
+    class_addmethod(SOFAlizer_tilde_class, (t_method)SOFAlizer_tilde_dsp, gensym("dsp"), A_CANT, 0);        /* Method for signal processing */
 }
