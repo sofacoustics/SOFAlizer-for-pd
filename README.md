@@ -9,19 +9,19 @@ This project presents an interactive, low-cost, binaural, virtual acoustics embe
 * bela_SOFAlizer is based on the project BelaOnUrHead. https://github.com/theleadingzero/belaonurhead
 
 ## Hardware
-Bela - A Beagle Bone Black with Xenomai real-time kernel extensions and with custom expansion board  
+**Bela** - A Beagle Bone Black with Xenomai real-time kernel extensions and with a custom expansion board  
 &emsp;&emsp;&emsp;for synchronous ultra low-latency audio and sensor processing at audio rate. As audio and sensor data  
 &emsp;&emsp;&emsp;is processed simultaneously, no jitter is introduced between them.  
 &emsp;&emsp;&emsp;Further it features two "Programmable Real-time Units " (PRUs), that are 200 MHz microcontrollers  
 &emsp;&emsp;&emsp;on the same chip as the CPU, with access to the same memory and peripherals as the CPU.     
 &emsp;&emsp;&emsp;A custom audio codec and sensor ADC/DAC driver utilizes the BeagleBone PRU and acts as a DMA  
 &emsp;&emsp;&emsp;(Direct Memory Access) controller, that transfers data between the hardware and a memory buffer.       
-&emsp;&emsp;&emsp;A Xenomai real-time audio and sensor task can process data from this buffer and is able to run at  
-&emsp;&emsp;&emsp;higher priority than the Linux kernel.  
-&emsp;&emsp;&emsp;So Pure Data's audio callback function "DSP_perform" runs as Xenomai function at the highest priority.    
+&emsp;&emsp;&emsp;A Xenomai real-time audio and sensor task can process data from this buffer and runs at a higher priority  
+&emsp;&emsp;&emsp;than the Linux kernel.  
+&emsp;&emsp;&emsp;So Pure Data's audio callback function "DSP_perform" runs as a Xenomai function at the highest priority.    
 &emsp;&emsp;&emsp;**https://bela.io/**    
 
-Adafruit 9-DOF Absolute Orientation IMU Head-tracker sensor: **https://www.adafruit.com/product/2472**  
+**Adafruit 9-DOF Absolute Orientation IMU** head-tracker sensor: **https://www.adafruit.com/product/2472**  
 
 ### Part List
 
