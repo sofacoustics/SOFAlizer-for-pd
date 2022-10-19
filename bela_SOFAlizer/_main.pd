@@ -103,7 +103,7 @@
 #X obj 977 144 delay 100;
 #X obj 927 435 s ele;
 #X text 890 9 Manual Control:;
-#X obj 579 56 r sofa;
+#X obj 579 56 r bno-sofa;
 #X connect 1 0 9 0;
 #X connect 2 0 11 0;
 #X connect 3 0 5 1;
