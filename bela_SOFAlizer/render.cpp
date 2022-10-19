@@ -777,7 +777,7 @@ void render(BelaContext *context, void *userData)
 			}
 		}
 		lastSofasValue = sofasValue;
-		libpd_float("sofas", sofasState);
+		libpd_float("sofa", sofasState);
 		
 		//switch(bypassState) {
 		//case 0: 
